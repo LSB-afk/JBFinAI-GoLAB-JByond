@@ -6,6 +6,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 required = [
     ROOT / "README.md",
+    ROOT / "_MOC/README.md",
+    ROOT / "02_전략/README.md",
+    ROOT / "03_제품/README.md",
+    ROOT / "04_증빙/README.md",
+    ROOT / "05_제출/README.md",
+    ROOT / "06_LLM위키/README.md",
+    ROOT / "_체계/README.md",
+    ROOT / "자산/README.md",
+    ROOT / "산출/README.md",
     ROOT / "docs/00_sources/pdf-read.md",
     ROOT / "docs/00_sources/daker-page-line-read.md",
     ROOT / "docs/01_research/pain-point-evidence.md",
@@ -84,6 +93,8 @@ doc_needles = [
     "4-zone layout",
     "Jeonse Shield",
     "전세 위험 신호 탐지",
+    "Map of Contents",
+    "GitHub 워크스페이스",
 ]
 joined_docs = "\n".join(
     path.read_text(encoding="utf-8")

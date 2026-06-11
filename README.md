@@ -29,6 +29,15 @@ python3 scripts/verify_static.py
 
 ## 문서 구조
 
+- `_MOC`: GitHub 워크스페이스 전체 지도
+- `02_전략`: 자유주제 전략, 평가 대응, pain point 근거 연결
+- `03_제품`: 제품 PRD, 기능 명세, 실행 앱 연결
+- `04_증빙`: PDF, DAKER 페이지, 기사, 공식자료 증빙
+- `05_제출`: 제출 패키지와 심사용 산출물
+- `06_LLM위키`: LLM/Agent 운영 패턴과 다음 작업 프롬프트
+- `_체계`: `Case -> AgentRun -> Approval -> Audit` 운영 체계
+- `자산`: 앱, 스크립트, 원천 자료 인덱스
+- `산출`: 최종 제출/발표 산출물 인덱스
 - `docs/00_sources`: PDF와 DAKER 페이지 요구사항을 읽고 정리한 원문 기반 노트
 - `docs/01_research`: 금융 pain point 기사와 JB 사업 연계 근거
 - `docs/02_product`: PRD와 기능명세서 초안
