@@ -11,8 +11,8 @@
 - [Agent 시스템](../docs/03_agents/agent-system.md)
 - [Jeonse Shield Agents](../docs/03_agents/jeonse-shield-agents.md)
 - [Skill Registry](../docs/03_agents/skill-registry.md)
+- [HagentOS 기반 JB LocalGuard OS 작업 내역](./work-log-hagentos-localguard-os.md)
 
 ## 데모
 
 - [JB LocalGuard OS 앱](../app/index.html)
-
