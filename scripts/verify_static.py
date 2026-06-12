@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
+import json
 import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
 required = [
+    ROOT / "package.json",
     ROOT / "README.md",
     ROOT / "_MOC/README.md",
     ROOT / "02_전략/README.md",
@@ -43,6 +45,17 @@ if missing:
 html = (ROOT / "app/index.html").read_text(encoding="utf-8")
 css = (ROOT / "app/styles.css").read_text(encoding="utf-8")
 js = (ROOT / "app/app.js").read_text(encoding="utf-8")
+package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
+
+required_scripts = {
+    "dev": "python3 -m http.server 8000 --directory app",
+    "build": "python3 scripts/verify_static.py",
+    "test": "python3 scripts/verify_static.py",
+    "test:e2e": "playwright test",
+}
+for name, command in required_scripts.items():
+    if package.get("scripts", {}).get(name) != command:
+        raise SystemExit(f"package.json script {name!r} should be {command!r}")
 
 html_needles = [
     "JB LocalGuard OS",
