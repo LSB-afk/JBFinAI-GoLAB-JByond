@@ -187,6 +187,47 @@ test("dashboard columns pack panels without grid row gaps", async ({ page }) => 
   await saveShot(page, "dashboard-packed.png");
 });
 
+test("properties detail panel scrolls expanded case sections", async ({ page }) => {
+  for (const viewport of [
+    { width: 1920, height: 1080 },
+    { width: 450, height: 1044 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/index.html#cases");
+    const auditToggle = page.locator('[data-panel-key="case-audit"] .panel-toggle');
+    if (await auditToggle.count() === 1) {
+      await auditToggle.click();
+    }
+
+    const scrollState = await page.evaluate(() => {
+      const contextPanel = document.querySelector("#context-panel");
+      const summaryPanel = document.querySelector('[data-panel-key="case-summary"]');
+      const auditPanel = document.querySelector('[data-panel-key="case-audit"]');
+      if (!contextPanel || !summaryPanel || !auditPanel) return null;
+      contextPanel.scrollTop = 0;
+      const before = contextPanel.scrollTop;
+      contextPanel.scrollTop = 9999;
+      const after = contextPanel.scrollTop;
+      return {
+        before,
+        after,
+        contextClientHeight: contextPanel.clientHeight,
+        contextScrollHeight: contextPanel.scrollHeight,
+        summaryClientHeight: summaryPanel.clientHeight,
+        summaryScrollHeight: summaryPanel.scrollHeight,
+        auditClientHeight: auditPanel.clientHeight,
+        auditScrollHeight: auditPanel.scrollHeight,
+      };
+    });
+
+    expect(scrollState).not.toBeNull();
+    expect(scrollState.contextScrollHeight).toBeGreaterThan(scrollState.contextClientHeight);
+    expect(scrollState.after).toBeGreaterThan(scrollState.before);
+    expect(scrollState.summaryClientHeight).toBeGreaterThanOrEqual(scrollState.summaryScrollHeight - 1);
+    expect(scrollState.auditClientHeight).toBeGreaterThanOrEqual(scrollState.auditScrollHeight - 1);
+  }
+});
+
 test("scenario flow runs a selected case and reaches approval state", async ({ page }) => {
   await page.goto("/index.html#cases");
   await page.locator('button.case-row[data-case-id="gwangju-wholesale"]').click();

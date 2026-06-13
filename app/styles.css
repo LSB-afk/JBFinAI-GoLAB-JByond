@@ -4530,3 +4530,26 @@ body {
   padding-bottom: 0;
   line-height: 1;
 }
+
+/* Detail panel scroll normalization: expanded panels must contribute to scroll height. */
+.properties-panel,
+.context-panel {
+  min-height: 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.context-panel {
+  align-items: start;
+  grid-auto-rows: max-content;
+  scrollbar-gutter: stable;
+}
+
+.context-panel > section.panel.collapsible-panel:not(.is-collapsed) {
+  overflow: visible;
+}
+
+.context-panel > section.panel.collapsible-panel:not(.is-collapsed) .panel-body {
+  min-height: 0;
+  overflow: visible;
+}
