@@ -4,10 +4,10 @@
 Template chrome (headers, footers, logos, section titles, divider lines) is preserved.
 Only the [작성방법] guide boxes are removed; content is added inside the content zone.
 
-Design system: Claude.com editorial palette adapted for a finance submission —
-warm cream canvas + coral accent + dark product surfaces, with navy/blue kept as a
-secondary "finance-trust" accent (bank/RM actors, JB labels). Font fixed to Pretendard.
+Design system: matches the JB LocalGuard OS app (02_제품/app/styles.css) — navy/blue/cyan
+on light surfaces, with deep navy as the dark product surface. Font fixed to Pretendard.
 Architecture and PII-governance diagrams are drawn as NATIVE, editable pptx shapes.
+Screenshots are captured fresh from the latest app (capture_shots.js).
 """
 
 from pptx import Presentation
@@ -19,31 +19,26 @@ from pptx.chart.data import CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE
 from pptx.oxml.ns import qn
 
-# ---------------------------------------------------------------- Claude.com tokens
-CANVAS = RGBColor(0xFA, 0xF9, 0xF5)        # canvas — warm cream page floor
-SURF_SOFT = RGBColor(0xF5, 0xF0, 0xE8)     # surface-soft — soft band/card
-SURF_CARD = RGBColor(0xEF, 0xE9, 0xDE)     # surface-card — feature card
-CREAM_STRONG = RGBColor(0xE8, 0xE0, 0xD2)  # surface-cream-strong
-CORAL = RGBColor(0xCC, 0x78, 0x5C)         # primary coral
-CORAL_ACT = RGBColor(0xA9, 0x58, 0x3E)     # coral active (darker)
-CORAL_SOFT = RGBColor(0xF3, 0xE3, 0xDB)    # coral tint card background
-AMBER = RGBColor(0xE8, 0xA5, 0x5A)         # accent amber (companion warm)
-TEAL = RGBColor(0x5D, 0xB8, 0xA6)          # accent teal
-DARK = RGBColor(0x18, 0x17, 0x15)          # dark product surface
-DARK_ELEV = RGBColor(0x25, 0x23, 0x20)     # dark elevated
-INK = RGBColor(0x14, 0x14, 0x13)           # ink — headlines
-BODY = RGBColor(0x3D, 0x3D, 0x3A)          # body running text
-MUTED = RGBColor(0x6C, 0x6A, 0x64)         # muted sub-text
-MUTED_SOFT = RGBColor(0x8E, 0x8B, 0x82)    # captions / fine print
-HAIRLINE = RGBColor(0xE6, 0xDF, 0xD8)      # 1px border on cream
-ON_DARK = RGBColor(0xFA, 0xF9, 0xF5)       # cream-white on dark
-ON_DARK_SOFT = RGBColor(0xA0, 0x9D, 0x96)  # secondary on dark
-SUCCESS = RGBColor(0x5D, 0xB8, 0x72)
-SUCCESS_BG = RGBColor(0xE4, 0xF2, 0xE6)
-# finance-trust secondary (navy/blue — used sparingly for bank/RM/JB)
-NAVY = RGBColor(0x12, 0x3D, 0x82)
-NAVY_DEEP = RGBColor(0x0B, 0x24, 0x52)
-WHITE = RGBColor(0xFF, 0xFF, 0xFF)
+# ---------------------------------------------------------------- tokens (02_제품/app/styles.css)
+INK = RGBColor(0x0F, 0x1F, 0x3A)           # --ink
+BODY = RGBColor(0x24, 0x39, 0x5F)          # readable mid
+MUTED = RGBColor(0x63, 0x77, 0x97)         # --muted
+MUTED_SOFT = RGBColor(0x8A, 0x9A, 0xB4)
+LINE = RGBColor(0xD6, 0xE3, 0xF1)          # --line
+WHITE = RGBColor(0xFF, 0xFF, 0xFF)         # --surface
+SOFT = RGBColor(0xF6, 0xF9, 0xFD)          # --surface-soft
+TINT = RGBColor(0xED, 0xF7, 0xFF)          # --surface-blue
+TINT_STRONG = RGBColor(0xCF, 0xE6, 0xFA)   # stronger blue tint (chart non-highlight)
+BLUE = RGBColor(0x0B, 0x6F, 0xB3)          # --blue-600 (primary accent)
+BLUE7 = RGBColor(0x07, 0x56, 0x9D)         # --blue-700 (darker accent / numbers)
+NAVY8 = RGBColor(0x12, 0x3D, 0x82)         # --navy-800
+DARK = RGBColor(0x09, 0x1C, 0x4D)          # --navy-950 (dark product surface)
+ON_DARK = RGBColor(0xED, 0xF4, 0xFB)       # --bg, used as on-dark text
+ON_DARK_SOFT = RGBColor(0x9D, 0xB1, 0xCE)
+CYAN = RGBColor(0x1C, 0xA9, 0xD6)          # --cyan-500 (accent on dark)
+CYAN1 = RGBColor(0xDF, 0xF7, 0xFF)         # --cyan-100 (soft tint)
+SUCCESS = RGBColor(0x0F, 0x8F, 0x72)
+SUCCESS_BG = RGBColor(0xE2, 0xF7, 0xF1)
 
 FONT = "Pretendard"
 IN = Inches
@@ -105,7 +100,7 @@ def add_rect(slide, x, y, w, h, fill, line=None, line_w=0.75, radius=0.08):
     return shp
 
 
-def add_arrow(slide, x1, y1, x2, y2, color=CORAL, weight=1.3):
+def add_arrow(slide, x1, y1, x2, y2, color=BLUE, weight=1.3):
     conn = slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, IN(x1), IN(y1), IN(x2), IN(y2))
     conn.line.color.rgb = color
     conn.line.width = Pt(weight)
@@ -152,7 +147,7 @@ def add_node(slide, x, y, w, h, title, sub, fill, title_color, sub_color,
 
 def add_picture_card(slide, path, x, y, w, h):
     pic = slide.shapes.add_picture(path, IN(x), IN(y), IN(w), IN(h))
-    pic.line.color.rgb = HAIRLINE
+    pic.line.color.rgb = LINE
     pic.line.width = Pt(1)
     pic.shadow.inherit = False
     return pic
@@ -191,7 +186,7 @@ for shp in s.shapes:
     if shp.has_table:
         tbl = shp.table
         fill_cell(tbl.cell(0, 1), "LocalGuard", 18, INK, True, PP_ALIGN.CENTER)
-        fill_cell(tbl.cell(1, 1), "JB LocalGuard OS", 18, CORAL_ACT, True, PP_ALIGN.CENTER)
+        fill_cell(tbl.cell(1, 1), "JB LocalGuard OS", 18, BLUE7, True, PP_ALIGN.CENTER)
 
 add_text(s, 1.73, 3.95, 10.4, 0.45,
          [("지역 금융 위험을 케이스로 모으고, AI 에이전트가 판단하고, 사람이 승인하는 금융안전 운영체제",
@@ -212,9 +207,9 @@ for shp in s.shapes:
         tf.clear()
         p = tf.paragraphs[0]
         set_run(p.add_run(), "자금압박 · 전세사기 · 보이스피싱 등 지역 고객의 금융 위험을 ", 14, INK)
-        set_run(p.add_run(), "케이스", 14, CORAL_ACT, True)
+        set_run(p.add_run(), "케이스", 14, BLUE7, True)
         set_run(p.add_run(), "로 등록하면, 전문 AI 에이전트들이 ", 14, INK)
-        set_run(p.add_run(), "판단 → 조치 초안 → 사람 승인 → 감사 기록", 14, CORAL_ACT, True)
+        set_run(p.add_run(), "판단 → 조치 초안 → 사람 승인 → 감사 기록", 14, BLUE7, True)
         set_run(p.add_run(), "까지 수행하는 JB 금융안전 운영 콘솔", 14, INK)
 
 # ================================================================ Slide 3 — 문제 정의
@@ -229,16 +224,16 @@ stat_specs = [
 sw = (CW - 0.4) / 3
 for i, (num, label, src) in enumerate(stat_specs):
     x = CX + i * (sw + 0.2)
-    add_rect(s, x, CY, sw, 1.00, SURF_CARD, line=HAIRLINE)
-    add_rect(s, x, CY, 0.07, 1.00, CORAL, radius=0.5)
-    add_text(s, x + 0.20, CY + 0.09, sw - 0.36, 0.34, [(num, 18, CORAL_ACT, True)])
+    add_rect(s, x, CY, sw, 1.00, TINT, line=LINE)
+    add_rect(s, x, CY, 0.07, 1.00, BLUE, radius=0.5)
+    add_text(s, x + 0.20, CY + 0.09, sw - 0.36, 0.34, [(num, 18, BLUE7, True)])
     add_text(s, x + 0.20, CY + 0.45, sw - 0.36, 0.26, [(label, 9.5, INK, True)])
     add_text(s, x + 0.20, CY + 0.71, sw - 0.36, 0.22, [(src, 7.5, MUTED, False)])
 
 chy, chh = CY + 1.14, 2.00
 chw = (CW - 0.3) / 2
 
-add_rect(s, CX, chy, chw, chh, CANVAS, line=HAIRLINE)
+add_rect(s, CX, chy, chw, chh, WHITE, line=LINE)
 add_text(s, CX + 0.16, chy + 0.08, chw - 0.32, 0.22,
          [("보이스피싱 피해액 비교 (억 원, 1~11월)", 10, INK, True)])
 cd = CategoryChartData()
@@ -253,22 +248,22 @@ plot = chart.plots[0]
 plot.gap_width = 90
 ser = plot.series[0]
 ser.format.fill.solid()
-ser.format.fill.fore_color.rgb = CORAL
+ser.format.fill.fore_color.rgb = BLUE
 pts = ser.points
 pts[0].format.fill.solid()
-pts[0].format.fill.fore_color.rgb = CREAM_STRONG
+pts[0].format.fill.fore_color.rgb = TINT_STRONG
 plot.has_data_labels = True
 plot.data_labels.font.size = Pt(8.5)
 plot.data_labels.font.color.rgb = INK
 plot.data_labels.font.name = FONT
 chart.value_axis.visible = False
 chart.value_axis.has_major_gridlines = False
-chart.category_axis.format.line.color.rgb = HAIRLINE
+chart.category_axis.format.line.color.rgb = LINE
 add_text(s, CX + 0.16, chy + chh - 0.28, chw - 0.32, 0.2,
          [("출처: 경찰청 국가수사본부 발표 (2025.7 보도) · 2024년 1인당 피해액 5,290만 원으로 2배 증가", 7.5, MUTED, False)])
 
 x2 = CX + chw + 0.3
-add_rect(s, x2, chy, chw, chh, CANVAS, line=HAIRLINE)
+add_rect(s, x2, chy, chw, chh, WHITE, line=LINE)
 add_text(s, x2 + 0.16, chy + 0.08, chw - 0.32, 0.22,
          [("전세사기 피해자 누적 결정 건수", 10, INK, True)])
 cd2 = CategoryChartData()
@@ -280,7 +275,7 @@ chart2 = gf2.chart
 chart2.has_legend = False
 style_chart(chart2)
 ser2 = chart2.plots[0].series[0]
-ser2.format.line.color.rgb = CORAL_ACT
+ser2.format.line.color.rgb = BLUE7
 ser2.format.line.width = Pt(2.25)
 chart2.plots[0].has_data_labels = True
 chart2.plots[0].data_labels.font.size = Pt(8)
@@ -288,7 +283,7 @@ chart2.plots[0].data_labels.font.color.rgb = INK
 chart2.plots[0].data_labels.font.name = FONT
 chart2.value_axis.visible = False
 chart2.value_axis.has_major_gridlines = False
-chart2.category_axis.format.line.color.rgb = HAIRLINE
+chart2.category_axis.format.line.color.rgb = LINE
 add_text(s, x2 + 0.16, chy + chh - 0.28, chw - 0.32, 0.2,
          [("출처: 국토교통부 전세사기피해지원위원회 결정 현황 (보도자료 ’25.8 / ’25.10 / ’25.11 / ’26.5)", 7.5, MUTED, False)])
 
@@ -302,7 +297,7 @@ cols = [
 cw3 = (CW - 0.9) / 3
 for i, (t, b) in enumerate(cols):
     x = CX + 0.25 + i * (cw3 + 0.2)
-    add_text(s, x, by + 0.12, cw3, 0.24, [(t, 10, AMBER, True)])
+    add_text(s, x, by + 0.12, cw3, 0.24, [(t, 10, CYAN, True)])
     add_text(s, x, by + 0.38, cw3, 0.52, [(line, 8.5, ON_DARK_SOFT, False) for line in b.split("\n")], space_after=1)
 
 # ================================================================ Slide 4 — 솔루션 개요
@@ -315,13 +310,13 @@ add_text(s, CX, CY - 0.02, CW, 0.24,
 
 # (1) full-width native system pipeline
 pipe = [
-    ("케이스", "고객 위험", SURF_CARD, INK, MUTED, HAIRLINE),
-    ("에이전트 실행", "AgentRun 로그", SURF_CARD, INK, MUTED, HAIRLINE),
-    ("전문 에이전트", "14종 메시", SURF_CARD, INK, MUTED, HAIRLINE),
-    ("스킬 장착", "25종 저장소", SURF_CARD, INK, MUTED, HAIRLINE),
-    ("근거", "출처 · Evidence", SURF_CARD, INK, MUTED, HAIRLINE),
-    ("PII 거버넌스", "비반출 게이트", CORAL, WHITE, ON_DARK, None),
-    ("승인 게이트", "사람 승인", CORAL, WHITE, ON_DARK, None),
+    ("케이스", "고객 위험", TINT, INK, MUTED, LINE),
+    ("에이전트 실행", "AgentRun 로그", TINT, INK, MUTED, LINE),
+    ("전문 에이전트", "14종 메시", TINT, INK, MUTED, LINE),
+    ("스킬 장착", "25종 저장소", TINT, INK, MUTED, LINE),
+    ("근거", "출처 · Evidence", TINT, INK, MUTED, LINE),
+    ("PII 거버넌스", "비반출 게이트", BLUE, WHITE, ON_DARK, None),
+    ("승인 게이트", "사람 승인", BLUE, WHITE, ON_DARK, None),
     ("감사 원장", "무결성 해시", DARK, ON_DARK, ON_DARK_SOFT, None),
 ]
 n = len(pipe)
@@ -333,9 +328,9 @@ for i, (t, sub, fill, tc, sc, ln) in enumerate(pipe):
     x = CX + i * (pnw + pgap)
     add_node(s, x, py, pnw, pnh, t, sub, fill, tc, sc, line=ln, title_size=8.5, sub_size=6.5)
     if i < n - 1:
-        add_arrow(s, x + pnw, py + pnh / 2, x + pnw + pgap, py + pnh / 2, CORAL, 1.2)
+        add_arrow(s, x + pnw, py + pnh / 2, x + pnw + pgap, py + pnh / 2, BLUE, 1.2)
 add_text(s, CX, py + pnh + 0.04, CW, 0.18,
-         [[("승인 거절 시 ", 7.5, MUTED, False), ("에스컬레이션(상위 검토·외부 차단)", 7.5, CORAL_ACT, True),
+         [[("승인 거절 시 ", 7.5, MUTED, False), ("에스컬레이션(상위 검토·외부 차단)", 7.5, BLUE7, True),
            ("으로 분기되며, 모든 단계가 감사 원장에 기록됩니다.", 7.5, MUTED, False)]])
 
 # (2) left — 운영 루프 4단계
@@ -350,10 +345,10 @@ loop_steps = [
 ]
 ly = sec_y + 0.28
 for num, t, b in loop_steps:
-    add_rect(s, CX, ly, lw, 0.42, SURF_SOFT, line=HAIRLINE)
+    add_rect(s, CX, ly, lw, 0.42, SOFT, line=LINE)
     circ = s.shapes.add_shape(MSO_SHAPE.OVAL, IN(CX + 0.10), IN(ly + 0.095), IN(0.23), IN(0.23))
     circ.fill.solid()
-    circ.fill.fore_color.rgb = CORAL
+    circ.fill.fore_color.rgb = BLUE
     circ.line.fill.background()
     circ.shadow.inherit = False
     tfc = circ.text_frame
@@ -369,16 +364,13 @@ for num, t, b in loop_steps:
 rx = CX + lw + 0.30
 rw = CW - lw - 0.30
 add_text(s, rx, sec_y, rw, 0.22,
-         [[("에이전트 조직  ", 10.5, INK, True), ("— 사람 승인자 2 + AI 에이전트 14", 8.5, MUTED, False)]])
+         [[("에이전트 조직  ", 10.5, INK, True), ("— 사람 승인자 2 + AI 에이전트 14 · 스킬 25", 8.5, MUTED, False)]])
 oy = sec_y + 0.28
-# human approvers row (finance-trust navy)
 ha_w = (rw - 0.14) / 2
-add_node(s, rx, oy, ha_w, 0.36, "RM 최종 승인자", "사람", NAVY, WHITE, ON_DARK_SOFT, title_size=8.5, sub_size=6.5)
-add_node(s, rx + ha_w + 0.14, oy, ha_w, 0.36, "준법 최종 승인자", "사람", NAVY, WHITE, ON_DARK_SOFT, title_size=8.5, sub_size=6.5)
-# orchestrator
+add_node(s, rx, oy, ha_w, 0.36, "RM 최종 승인자", "사람", NAVY8, WHITE, ON_DARK_SOFT, title_size=8.5, sub_size=6.5)
+add_node(s, rx + ha_w + 0.14, oy, ha_w, 0.36, "준법 최종 승인자", "사람", NAVY8, WHITE, ON_DARK_SOFT, title_size=8.5, sub_size=6.5)
 oy2 = oy + 0.44
 add_node(s, rx, oy2, rw, 0.34, "운영 조율 에이전트 (Orchestrator)", "", DARK, ON_DARK, ON_DARK_SOFT, title_size=8.5)
-# specialized agents — 6 chips, 2 rows of 3
 oy3 = oy2 + 0.42
 agents6 = ["위험신호 조기감지", "상환위험 분류", "정책금융 매칭", "RM 보좌", "이상거래 탐지·차단", "준법 검토"]
 acw = (rw - 0.20) / 3
@@ -386,12 +378,11 @@ for i, name in enumerate(agents6):
     col, row = i % 3, i // 3
     x = rx + col * (acw + 0.10)
     y = oy3 + row * 0.34
-    add_chip(s, x, y, acw, 0.28, name, SURF_CARD, INK, size=7.5, bold=True, line=HAIRLINE)
-# jeonse line
+    add_chip(s, x, y, acw, 0.28, name, TINT, INK, size=7.5, bold=True, line=LINE)
 oy4 = oy3 + 0.74
-add_rect(s, rx, oy4, rw, 0.46, CORAL_SOFT, line=HAIRLINE)
+add_rect(s, rx, oy4, rw, 0.46, CYAN1, line=LINE)
 add_text(s, rx + 0.12, oy4 + 0.05, rw - 0.24, 0.18,
-         [[("전세 보호 라인  ", 8, CORAL_ACT, True), ("— 전세위험 관리 리드 + 4개 전문 에이전트", 7.5, MUTED, False)]])
+         [[("전세 보호 라인  ", 8, BLUE7, True), ("— 전세위험 관리 리드 + 4개 전문 에이전트", 7.5, MUTED, False)]])
 add_text(s, rx + 0.12, oy4 + 0.24, rw - 0.24, 0.18,
          [("전세가율 · 등기 권리 · 임차인 손실위험 · 계약 체크리스트 · 은행 연계", 7.5, BODY, False)])
 
@@ -399,7 +390,7 @@ add_text(s, rx + 0.12, oy4 + 0.24, rw - 0.24, 0.18,
 strip_y = CY + CH - 0.30
 add_rect(s, CX, strip_y, CW, 0.30, DARK, radius=0.5)
 add_text(s, CX + 0.3, strip_y + 0.055, CW - 0.6, 0.22,
-         [[("설계 원칙  ", 8.5, AMBER, True),
+         [[("설계 원칙  ", 8.5, CYAN, True),
            ("스킬 장착형 멀티 에이전트(기능 추가 = 스킬 추가) · 승인 우선 자동화(완전 자동 발송 금지) · 근거와 감사 기록은 일급 객체",
             8.5, ON_DARK, False)]])
 
@@ -412,14 +403,14 @@ shot_h = shot_w * 9 / 16
 add_text(s, CX, CY - 0.02, shot_w + 0.3, 0.24, [("실제 동작하는 MVP 콘솔", 11, INK, True)])
 add_picture_card(s, "shots/dashboard.png", CX, CY + 0.28, shot_w, shot_h)
 add_text(s, CX, CY + 0.32 + shot_h, shot_w, 0.2,
-         [("대시보드 — 한 줄 지시 실행 · 실시간 실행 · 처리 흐름 상태 · 우측 케이스 상세", 7.5, MUTED, False)])
+         [("대시보드 — 한 줄 지시 실행 · 실시간 실행 · 운영 비용 해석 · 우측 케이스 상세", 7.5, MUTED, False)])
 mini_y = CY + 0.56 + shot_h
 mini_w = (shot_w - 0.14) / 2
 mini_h = mini_w * 9 / 16
 add_picture_card(s, "shots/orgchart.png", CX, mini_y, mini_w, mini_h)
-add_picture_card(s, "shots/skills.png", CX + mini_w + 0.14, mini_y, mini_w, mini_h)
+add_picture_card(s, "shots/plugins.png", CX + mini_w + 0.14, mini_y, mini_w, mini_h)
 add_text(s, CX, mini_y + mini_h + 0.03, mini_w, 0.2, [("에이전트 조직도 (14종)", 7.5, MUTED, False)])
-add_text(s, CX + mini_w + 0.14, mini_y + mini_h + 0.03, mini_w, 0.2, [("스킬 저장소 (25종)", 7.5, MUTED, False)])
+add_text(s, CX + mini_w + 0.14, mini_y + mini_h + 0.03, mini_w, 0.2, [("플러그인 · MCP 커넥터 (6종)", 7.5, MUTED, False)])
 
 fx = CX + shot_w + 0.35
 fw = CW - shot_w - 0.35
@@ -438,17 +429,17 @@ for i, (t, d, p) in enumerate(features):
     col, row = i % 2, i // 2
     x = fx + col * (fcw + 0.16)
     y = CY + 0.28 + row * (fch + 0.12)
-    add_rect(s, x, y, fcw, fch, SURF_SOFT, line=HAIRLINE)
+    add_rect(s, x, y, fcw, fch, SOFT, line=LINE)
     add_chip(s, x + fcw - 0.78, y + 0.08, 0.68, 0.22, "구현 완료", SUCCESS_BG, SUCCESS, size=7)
     add_text(s, x + 0.12, y + 0.07, fcw - 0.95, 0.24, [(t, 9.5, INK, True)])
     add_text(s, x + 0.12, y + 0.34, fcw - 0.24, 0.46, [(d, 8, MUTED, False)])
-    add_text(s, x + 0.12, y + 0.88, fcw - 0.24, 0.24, [[("해결: ", 7.5, CORAL_ACT, True), (p, 7.5, MUTED, False)]])
+    add_text(s, x + 0.12, y + 0.88, fcw - 0.24, 0.24, [[("해결: ", 7.5, BLUE7, True), (p, 7.5, MUTED, False)]])
 
 strip_y = CY + 0.28 + 3 * fch + 2 * 0.12 + 0.12
 add_rect(s, fx, strip_y, fw, 0.42, DARK, radius=0.5)
 add_text(s, fx + 0.2, strip_y + 0.10, fw - 0.4, 0.22,
-         [[("MVP 범위  ", 8.5, AMBER, True),
-           ("판단(위험 진단) → 행동(조치 초안) → 검증(승인·감사) — github.com/LSB-afk/JB-Fin-AI-Challenge",
+         [[("MVP 범위  ", 8.5, CYAN, True),
+           ("에이전트 14 · 스킬 25 · 플러그인 6 · 화면 15 · E2E 19 — github.com/LSB-afk/JB-Fin-AI-Challenge",
             8.5, ON_DARK, False)]])
 
 # ================================================================ Slide 6 — 데이터 및 기술 + 거버넌스
@@ -459,13 +450,12 @@ add_text(s, CX, CY - 0.02, CW, 0.24,
          [[("데이터 및 기술  ", 11, INK, True),
            ("— 외부 LLM을 쓰되 고객 원본 PII는 외부로 나가지 않는다 (최대 차별점)", 9, MUTED, False)]])
 
-# (1) PII 4중 방어 governance — native horizontal flow
 gov = [
-    ("Case 필드", "고객 PII", SURF_CARD, INK, MUTED, HAIRLINE),
-    ("① 데이터 등급제", "public~PII 등급", SURF_CARD, INK, MUTED, HAIRLINE),
-    ("② 토큰화·볼트", "국내 PII 보관", CORAL, WHITE, ON_DARK, None),
-    ("③ 모델 라우팅", "국내/외부 분리", CORAL, WHITE, ON_DARK, None),
-    ("④ 반출 스캔", "패턴+토큰 검증", CORAL, WHITE, ON_DARK, None),
+    ("Case 필드", "고객 PII", TINT, INK, MUTED, LINE),
+    ("① 데이터 등급제", "public~PII 등급", TINT, INK, MUTED, LINE),
+    ("② 토큰화·볼트", "국내 PII 보관", BLUE, WHITE, ON_DARK, None),
+    ("③ 모델 라우팅", "국내/외부 분리", BLUE, WHITE, ON_DARK, None),
+    ("④ 반출 스캔", "패턴+토큰 검증", BLUE, WHITE, ON_DARK, None),
     ("감사 원장", "무결성 해시", DARK, ON_DARK, ON_DARK_SOFT, None),
 ]
 gn = len(gov)
@@ -477,13 +467,12 @@ for i, (t, sub, fill, tc, sc, ln) in enumerate(gov):
     x = CX + i * (gnw + ggap)
     add_node(s, x, gy, gnw, gnh, t, sub, fill, tc, sc, line=ln, title_size=8.5, sub_size=6.5)
     if i < gn - 1:
-        add_arrow(s, x + gnw, gy + gnh / 2, x + gnw + ggap, gy + gnh / 2, CORAL, 1.2)
+        add_arrow(s, x + gnw, gy + gnh / 2, x + gnw + ggap, gy + gnh / 2, BLUE, 1.2)
 add_text(s, CX, gy + gnh + 0.04, CW, 0.18,
-         [[("법적 근거  ", 7.5, CORAL_ACT, True),
+         [[("법적 근거  ", 7.5, BLUE7, True),
            ("신용정보법 §40-2(분리보관·재식별 금지) · 개인정보보호법 §28-4/§28-5 · 전자금융감독규정 §15(망분리) · 금융위 망분리 개선 로드맵(2024.8)",
             7.5, MUTED, False)]])
 
-# (2) mid-left — 활용 데이터
 mid_y = gy + gnh + 0.34
 dw = 6.30
 add_text(s, CX, mid_y, dw, 0.22, [("활용 데이터 — 공개 · 공식 출처 우선, 출처 전부 명시", 10.5, INK, True)])
@@ -495,20 +484,19 @@ data_rows = [
 ]
 dy = mid_y + 0.28
 for t, b, m in data_rows:
-    add_rect(s, CX, dy, dw, 0.56, CANVAS, line=HAIRLINE)
-    add_text(s, CX + 0.13, dy + 0.05, 1.20, 0.46, [(t, 8.5, CORAL_ACT, True)], anchor=MSO_ANCHOR.MIDDLE)
+    add_rect(s, CX, dy, dw, 0.56, WHITE, line=LINE)
+    add_text(s, CX + 0.13, dy + 0.05, 1.20, 0.46, [(t, 8.5, BLUE7, True)], anchor=MSO_ANCHOR.MIDDLE)
     add_text(s, CX + 1.40, dy + 0.05, dw - 2.70, 0.48, [(b, 7.5, INK, False)], anchor=MSO_ANCHOR.MIDDLE)
     add_text(s, CX + dw - 1.28, dy + 0.05, 1.18, 0.48, [(m, 6.5, MUTED, False)], align=PP_ALIGN.RIGHT, anchor=MSO_ANCHOR.MIDDLE)
     dy += 0.62
 
-# (3) mid-right — 기술 구성 (dark card)
 tx = CX + dw + 0.30
 tw = CW - dw - 0.30
 add_text(s, tx, mid_y, tw, 0.22, [("기술 구성 — 현재 MVP와 본선 목표", 10.5, INK, True)])
 card_y = mid_y + 0.28
 card_h = 2.48
 add_rect(s, tx, card_y, tw, card_h, DARK, radius=0.06)
-add_text(s, tx + 0.16, card_y + 0.12, tw - 0.32, 0.2, [("현재 MVP  (예선 · 구현 완료)", 8.5, AMBER, True)])
+add_text(s, tx + 0.16, card_y + 0.12, tw - 0.32, 0.2, [("현재 MVP  (예선 · 구현 완료)", 8.5, CYAN, True)])
 mvp_lines = [
     "Vanilla JS/CSS 정적 콘솔 — 외부 의존성 0, 브라우저만으로 시연",
     "상태 모델: 케이스 · 실행 · 승인 · 감사 상호 연동",
@@ -518,7 +506,7 @@ my = card_y + 0.36
 for line in mvp_lines:
     add_text(s, tx + 0.26, my, tw - 0.40, 0.2, [("· " + line, 7.5, ON_DARK_SOFT, False)])
     my += 0.215
-add_text(s, tx + 0.16, my + 0.06, tw - 0.32, 0.2, [("본선 목표 아키텍처", 8.5, AMBER, True)])
+add_text(s, tx + 0.16, my + 0.06, tw - 0.32, 0.2, [("본선 목표 아키텍처", 8.5, CYAN, True)])
 tech_lines = [
     "LLM — 위험 판단 요약 · 조치 초안 (상용 API, 토큰만 입력)",
     "RAG — HUG·국토부·금융위 공개자료로 근거 강제 연결",
@@ -538,21 +526,21 @@ add_text(s, CX, CY - 0.02, CW, 0.24,
          [[("유스케이스 상세 — 전세 보호 라인  ", 11, INK, True),
            ("(청년 고객이 전세계약 전에 은행을 통해 위험을 진단받는 흐름)", 9, MUTED, False)]])
 
-actors = [("고객", SURF_CARD, INK), ("RM(은행)", NAVY, WHITE), ("AI 에이전트", DARK, ON_DARK), ("검증·승인", CORAL, WHITE)]
+actors = [("고객", TINT, INK), ("RM(은행)", NAVY8, WHITE), ("AI 에이전트", DARK, ON_DARK), ("검증·승인", BLUE, WHITE)]
 lx = CX
 for label, fillc, tc in actors:
     add_chip(s, lx, CY + 0.26, 0.98, 0.24, label, fillc, tc, size=7.5,
-             line=HAIRLINE if fillc == SURF_CARD else None)
+             line=LINE if fillc == TINT else None)
     lx += 1.08
 
 steps = [
-    ("1", "전세계약 전\n상담 신청", SURF_CARD, INK, HAIRLINE),
-    ("2", "케이스 생성\nJBG-201", NAVY, WHITE, None),
+    ("1", "전세계약 전\n상담 신청", TINT, INK, LINE),
+    ("2", "케이스 생성\nJBG-201", NAVY8, WHITE, None),
     ("3", "전세가율·권리관계\n·자산 리스크 진단", DARK, ON_DARK, None),
     ("4", "체크리스트 +\n특약 초안 생성", DARK, ON_DARK, None),
-    ("5", "준법 검토\n표현·법률 리스크", CORAL, WHITE, None),
-    ("6", "RM 승인\n(사람 결정)", NAVY, WHITE, None),
-    ("7", "안전 계약 가이드\n+ 대출·보증 상담", SURF_CARD, INK, HAIRLINE),
+    ("5", "준법 검토\n표현·법률 리스크", BLUE, WHITE, None),
+    ("6", "RM 승인\n(사람 결정)", NAVY8, WHITE, None),
+    ("7", "안전 계약 가이드\n+ 대출·보증 상담", TINT, INK, LINE),
 ]
 fy = CY + 0.60
 fh = 0.92
@@ -565,10 +553,10 @@ for i, (num, label, fillc, tc, ln) in enumerate(steps):
     add_text(s, x + 0.08, fy + 0.28, fw7 - 0.16, 0.56,
              [(seg, 8, tc, True) for seg in label.split("\n")], space_after=0)
     if i < 6:
-        add_arrow(s, x + fw7 + 0.015, fy + fh / 2, x + fw7 + gap - 0.015, fy + fh / 2, CORAL, 1.1)
+        add_arrow(s, x + fw7 + 0.015, fy + fh / 2, x + fw7 + gap - 0.015, fy + fh / 2, BLUE, 1.1)
 
 add_text(s, CX, fy + fh + 0.05, CW, 0.2,
-         [[("안전 정책: ", 8, CORAL_ACT, True),
+         [[("안전 정책: ", 8, BLUE7, True),
            ("법률 확정 표현 금지 · 등기/보증은 원문 확인 · 특약은 초안만 · 은행 연계는 고객 동의 + RM 승인 후 진행",
             8, MUTED, False)]])
 
@@ -588,7 +576,7 @@ add_text(s, shot_b_x, sy + 0.19 + shot_b_h, shot_b_w, 0.2,
 
 bx = shot_b_x + shot_b_w + 0.25
 bw = CX + CW - bx
-add_rect(s, bx, sy, bw, shot_a_h + 0.22, SURF_SOFT, line=HAIRLINE)
+add_rect(s, bx, sy, bw, shot_a_h + 0.22, SOFT, line=LINE)
 add_text(s, bx + 0.14, sy + 0.09, bw - 0.28, 0.4, [("대표 케이스 — 전주 중앙로 카페 자금압박 (JBG-104)", 9, INK, True)])
 sub_steps = [
     "매출 둔화 + 금리 부담 신호 감지 (riskScore 88)",
@@ -599,7 +587,7 @@ sub_steps = [
 sy2 = sy + 0.42
 for i, line in enumerate(sub_steps, 1):
     add_text(s, bx + 0.14, sy2, bw - 0.28, 0.34,
-             [[(f"{i}. ", 8, CORAL_ACT, True), (line, 8, INK, False)]], space_after=0)
+             [[(f"{i}. ", 8, BLUE7, True), (line, 8, INK, False)]], space_after=0)
     sy2 += 0.47
 
 # ================================================================ Slide 8 — 기대 효과
@@ -615,9 +603,9 @@ impact = [
 iw = (CW - 0.6) / 4
 for i, (num, t, b) in enumerate(impact):
     x = CX + i * (iw + 0.2)
-    add_rect(s, x, CY, iw, 1.12, SURF_CARD, line=HAIRLINE)
-    add_rect(s, x, CY, iw, 0.07, CORAL, radius=0.5)
-    add_text(s, x + 0.13, CY + 0.12, iw - 0.26, 0.32, [(num, 17, CORAL_ACT, True)])
+    add_rect(s, x, CY, iw, 1.12, TINT, line=LINE)
+    add_rect(s, x, CY, iw, 0.07, BLUE, radius=0.5)
+    add_text(s, x + 0.13, CY + 0.12, iw - 0.26, 0.32, [(num, 17, BLUE7, True)])
     add_text(s, x + 0.13, CY + 0.47, iw - 0.26, 0.22, [(t, 8.5, INK, True)])
     add_text(s, x + 0.13, CY + 0.71, iw - 0.26, 0.4, [(b, 7.5, MUTED, False)])
 add_text(s, CX, CY + 1.16, CW, 0.18,
@@ -628,20 +616,20 @@ rw2 = 6.6
 add_text(s, CX, ry2, rw2, 0.22, [("발전 경로 — 예선에서 고객 서비스까지", 11, INK, True)])
 road = [
     ("예선 (완료)", "정적 MVP 콘솔\n시나리오 검증 · GitHub 공개", SUCCESS),
-    ("본선", "LLM · RAG 연동\n공공데이터 PoC", CORAL),
-    ("내부 파일럿", "전북은행 RM 부서\n승인·감사 정책 검증", NAVY),
+    ("본선", "LLM · RAG 연동\n공공데이터 PoC", BLUE),
+    ("내부 파일럿", "전북은행 RM 부서\n승인·감사 정책 검증", NAVY8),
     ("고객 서비스화", "뱅킹 앱 연계\n전세 보호 우선 출시", DARK),
 ]
 rcw = (rw2 - 0.45) / 4
 for i, (t, b, c) in enumerate(road):
     x = CX + i * (rcw + 0.15)
-    add_rect(s, x, ry2 + 0.26, rcw, 1.04, CANVAS, line=HAIRLINE)
+    add_rect(s, x, ry2 + 0.26, rcw, 1.04, WHITE, line=LINE)
     add_rect(s, x, ry2 + 0.26, rcw, 0.28, c, radius=0.15)
     add_text(s, x + 0.07, ry2 + 0.305, rcw - 0.14, 0.2, [(t, 8, WHITE, True)], align=PP_ALIGN.CENTER)
     add_text(s, x + 0.09, ry2 + 0.62, rcw - 0.18, 0.6,
              [(seg, 7.5, INK, False) for seg in b.split("\n")], space_after=1)
     if i < 3:
-        add_arrow(s, x + rcw + 0.005, ry2 + 0.78, x + rcw + 0.145, ry2 + 0.78, CORAL, 1.1)
+        add_arrow(s, x + rcw + 0.005, ry2 + 0.78, x + rcw + 0.145, ry2 + 0.78, BLUE, 1.1)
 
 kx = CX + rw2 + 0.35
 kw = CW - rw2 - 0.35
@@ -661,7 +649,7 @@ for t, b in risks:
 by8 = ry2 + 1.46
 add_rect(s, CX, by8, CW, 0.72, DARK, radius=0.10)
 add_text(s, CX + 0.25, by8 + 0.11, CW - 0.5, 0.24,
-         [[("계열사 확장:  ", 9, AMBER, True),
+         [[("계열사 확장:  ", 9, CYAN, True),
            ("전북은행(지역 SME · 전세 보호)  →  광주은행(가계 · 청년)  →  JB우리캐피탈(할부 · 리스 사후관리)",
             9, ON_DARK, False)]])
 add_text(s, CX + 0.25, by8 + 0.40, CW - 0.5, 0.22,
