@@ -54,6 +54,7 @@ aliases:
 - [x] 결과 회수·정리(docx→md, **수식 LaTeX 변환**, `_media/` 보존) → `_결과/` + [[_00-회수현황]]
 - [x] 고위험 5건 format B 적대검증(`_종합-*`) → `_canon §10` 정정(대환대출 2023·전세 39,121건·총자산 73.1조)
 - [x] 갭감사(Codex 5.5) → D16~19 신설 (`_03-리서치-갭감사`)
+- [x] **GitHub 푸시** — 브랜치 `ui-density-improvements` (LSB-afk fork·origin) → **PR #11 OPEN**(main 병합 대기)
 - [ ] (재개 대기) 추가 결과 회수 + **총정리본(D3e+D3f) 7레이어 조립 + Excalidraw 시각화**
 - [ ] 리서치 결과 → 제품 정의·설계 반영(워터폴 다음 단계)
 
