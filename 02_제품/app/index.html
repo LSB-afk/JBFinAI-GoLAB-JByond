@@ -4,15 +4,35 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>JB LocalGuard OS</title>
-    <link rel="stylesheet" href="./styles.css?v=github-sync-20260614" />
+    <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="./styles.css?v=plugin-badge-white-20260701" />
   </head>
   <body>
     <div class="app-shell">
       <aside class="org-rail" aria-label="organization rail">
         <div class="rail-logo">JB</div>
-        <button class="rail-item" type="button" title="전북은행 케이스만 보기" data-affiliate="전북은행">전북</button>
-        <button class="rail-item" type="button" title="광주은행 케이스만 보기" data-affiliate="광주은행">광주</button>
-        <button class="rail-item" type="button" title="JB우리캐피탈 케이스만 보기" data-affiliate="JB우리캐피탈">캐피탈</button>
+        <div class="rail-group" data-rail-group="affiliate">
+          <button class="rail-item rail-toggle" type="button" title="계열사 선택" aria-expanded="false" aria-controls="rail-affiliate-menu" data-rail-toggle="affiliate">계열</button>
+          <div id="rail-affiliate-menu" class="rail-submenu" role="group" aria-label="계열사 선택">
+            <span class="rail-menu-title">계열사</span>
+            <button class="rail-menu-item is-active" type="button" data-affiliate="all">전체</button>
+            <button class="rail-menu-item" type="button" title="전북은행 케이스만 보기" data-affiliate="전북은행">전북은행</button>
+            <button class="rail-menu-item" type="button" title="광주은행 케이스만 보기" data-affiliate="광주은행">광주은행</button>
+            <button class="rail-menu-item" type="button" title="JB우리캐피탈 케이스만 보기" data-affiliate="JB우리캐피탈">JB우리캐피탈</button>
+          </div>
+        </div>
+        <div class="rail-group" data-rail-group="role">
+          <button class="rail-item rail-toggle" type="button" title="담당자 유형 선택" aria-expanded="false" aria-controls="rail-role-menu" data-rail-toggle="role">담당</button>
+          <div id="rail-role-menu" class="rail-submenu rail-role-menu" role="group" aria-label="담당자 유형 선택">
+            <span class="rail-menu-title">담당자 유형</span>
+            <button class="rail-menu-item" type="button" data-role-filter="RM">RM</button>
+            <button class="rail-menu-item" type="button" data-role-filter="기업여신 담당자">기업여신 담당자</button>
+            <button class="rail-menu-item" type="button" data-role-filter="전세보호 담당자">전세보호 담당자</button>
+            <button class="rail-menu-item" type="button" data-role-filter="소비자 보호 담당자">소비자 보호 담당자</button>
+            <button class="rail-menu-item" type="button" data-role-filter="보이스피싱/FDS 담당자">보이스피싱/FDS 담당자</button>
+            <button class="rail-menu-item" type="button" data-role-filter="내부통제 준법감시 담당자">내부통제 준법감시 담당자</button>
+          </div>
+        </div>
         <div class="rail-spacer"></div>
         <button id="rail-notify" class="rail-icon" type="button" title="알림: 처리 대기·긴급 케이스 보기">!</button>
         <button id="rail-settings" class="rail-icon" type="button" title="설정">⚙</button>
@@ -61,6 +81,6 @@
     <div id="deliverable-root"></div>
     <div id="toast-root" aria-live="polite"></div>
     <script src="./modules.js?v=github-sync-20260614"></script>
-    <script src="./app.js?v=github-sync-20260614"></script>
+  <script src="./app.js?v=plugin-badge-white-20260701"></script>
   </body>
 </html>

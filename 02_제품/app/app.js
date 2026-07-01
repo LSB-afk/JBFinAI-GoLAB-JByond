@@ -31,6 +31,8 @@ const navigation = [
   },
 ];
 
+const NAV_ORDER_STORAGE_KEY = "jb-localguard-nav-order-v1";
+
 const evidence = [
   {
     id: "jb-ai-mou",
@@ -732,6 +734,7 @@ let approvalTab = "pending";
 let lastDispatchResult = null;
 let draggedCaseId = null;
 let railFilter = "all";
+let selectedRailRole = "";
 let caseSequence = 201;
 let runSequence = 1;
 let propertiesOpen = true;
@@ -744,6 +747,11 @@ let scenarioResults = [];
 let lastSavedAt = null;
 let demoModeState = null;
 let auditIntegrityResult = "";
+let draggedNavId = null;
+let draggedNavSection = null;
+let navDragMoved = false;
+let suppressNavClickUntil = 0;
+let pointerNavDrag = null;
 let agentRuns = [
   {
     id: "run-001",
@@ -1212,20 +1220,186 @@ function counts() {
     activity: activity.length,
     budget: agents.reduce((sum, agent) => sum + agent.spent, 0),
     settings: 3,
+    "rm-dashboard": 8,
+    "corporate-credit-dashboard": 8,
+    "jeonse-protection-dashboard": 8,
+    "consumer-protection-dashboard": 8,
+    "fds-dashboard": 8,
+    "compliance-dashboard": 8,
   };
+}
+
+function restoreNavigationOrder() {
+  let storedOrder = null;
+  try {
+    storedOrder = JSON.parse(localStorage.getItem(NAV_ORDER_STORAGE_KEY) || "null");
+  } catch (error) {
+    storedOrder = null;
+  }
+  if (!storedOrder || typeof storedOrder !== "object") return;
+
+  navigation.forEach((group) => {
+    const savedIds = Array.isArray(storedOrder[group.section]) ? storedOrder[group.section] : [];
+    if (!savedIds.length) return;
+    const originalIndex = new Map(group.items.map((item, index) => [item.id, index]));
+    const savedIndex = new Map(savedIds.map((id, index) => [id, index]));
+    group.items.sort((a, b) => {
+      const aSaved = savedIndex.has(a.id);
+      const bSaved = savedIndex.has(b.id);
+      if (aSaved && bSaved) return savedIndex.get(a.id) - savedIndex.get(b.id);
+      if (aSaved) return -1;
+      if (bSaved) return 1;
+      return originalIndex.get(a.id) - originalIndex.get(b.id);
+    });
+  });
+}
+
+function saveNavigationOrder() {
+  const order = Object.fromEntries(navigation.map((group) => [group.section, group.items.map((item) => item.id)]));
+  try {
+    localStorage.setItem(NAV_ORDER_STORAGE_KEY, JSON.stringify(order));
+  } catch (error) {
+    // Storage can be unavailable in restricted browser contexts; dragging should still work in-session.
+  }
+}
+
+function findNavigationItem(id) {
+  for (let groupIndex = 0; groupIndex < navigation.length; groupIndex += 1) {
+    const itemIndex = navigation[groupIndex].items.findIndex((item) => item.id === id);
+    if (itemIndex >= 0) return { groupIndex, itemIndex };
+  }
+  return null;
+}
+
+function moveNavigationItem(sourceId, targetId, placement) {
+  const source = findNavigationItem(sourceId);
+  const target = findNavigationItem(targetId);
+  if (!source || !target || sourceId === targetId || source.groupIndex !== target.groupIndex) return false;
+
+  const items = navigation[source.groupIndex].items;
+  const [moved] = items.splice(source.itemIndex, 1);
+  const targetIndex = items.findIndex((item) => item.id === targetId);
+  if (targetIndex < 0) {
+    items.splice(source.itemIndex, 0, moved);
+    return false;
+  }
+
+  items.splice(placement === "after" ? targetIndex + 1 : targetIndex, 0, moved);
+  saveNavigationOrder();
+  return true;
+}
+
+function navDropPlacement(button, clientY) {
+  const rect = button.getBoundingClientRect();
+  return clientY > rect.top + rect.height / 2 ? "after" : "before";
+}
+
+function clearNavigationDropState() {
+  document.querySelectorAll(".nav-button.is-drop-before, .nav-button.is-drop-after, .nav-button.is-drop-blocked").forEach((button) => {
+    button.classList.remove("is-drop-before", "is-drop-after", "is-drop-blocked");
+  });
+}
+
+function resetNavigationDragState() {
+  clearNavigationDropState();
+  document.querySelectorAll(".nav-button.is-dragging").forEach((button) => button.classList.remove("is-dragging"));
+  if (navDragMoved) suppressNavClickUntil = Date.now() + 250;
+  draggedNavId = null;
+  draggedNavSection = null;
+  navDragMoved = false;
+  pointerNavDrag = null;
+}
+
+function markNavigationDropTarget(button, placement) {
+  clearNavigationDropState();
+  if (!button || button.dataset.navSection !== draggedNavSection) {
+    if (button) button.classList.add("is-drop-blocked");
+    return;
+  }
+  button.classList.add(placement === "after" ? "is-drop-after" : "is-drop-before");
+}
+
+function navigationButtonFromPoint(clientX, clientY, sourceId) {
+  return Array.from(document.querySelectorAll("#nav-list .nav-button[data-view]")).find((button) => {
+    if (button.dataset.view === sourceId) return false;
+    const rect = button.getBoundingClientRect();
+    return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+  });
+}
+
+function beginNavigationPointerDrag(button, event) {
+  if (event.pointerType === "mouse" && event.button !== 0) return;
+  pointerNavDrag = {
+    sourceId: button.dataset.view,
+    section: button.dataset.navSection,
+    sourceButton: button,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    targetId: null,
+    placement: "before",
+    moved: false,
+  };
+  try {
+    button.setPointerCapture(event.pointerId);
+  } catch (error) {
+    // Pointer capture is a progressive enhancement; normal pointer events still work without it.
+  }
+}
+
+function updateNavigationPointerDrag(event) {
+  if (!pointerNavDrag) return;
+  const distance = Math.hypot(event.clientX - pointerNavDrag.startX, event.clientY - pointerNavDrag.startY);
+  if (!pointerNavDrag.moved && distance < 8) return;
+
+  event.preventDefault();
+  pointerNavDrag.moved = true;
+  navDragMoved = true;
+  draggedNavId = pointerNavDrag.sourceId;
+  draggedNavSection = pointerNavDrag.section;
+  pointerNavDrag.sourceButton.classList.add("is-dragging");
+
+  const target = navigationButtonFromPoint(event.clientX, event.clientY, pointerNavDrag.sourceId);
+  if (!target || target.dataset.view === pointerNavDrag.sourceId) {
+    clearNavigationDropState();
+    pointerNavDrag.targetId = null;
+    return;
+  }
+
+  const placement = navDropPlacement(target, event.clientY);
+  pointerNavDrag.targetId = target.dataset.view;
+  pointerNavDrag.placement = placement;
+  markNavigationDropTarget(target, placement);
+}
+
+function finishNavigationPointerDrag(event) {
+  if (!pointerNavDrag) return;
+  const drag = pointerNavDrag;
+  if (drag.sourceButton.hasPointerCapture?.(drag.pointerId)) {
+    try {
+      drag.sourceButton.releasePointerCapture(drag.pointerId);
+    } catch (error) {
+      // Ignore release failures from browsers that already ended capture.
+    }
+  }
+  const moved = drag.moved && drag.targetId ? moveNavigationItem(drag.sourceId, drag.targetId, drag.placement) : false;
+  if (drag.moved) suppressNavClickUntil = Date.now() + 250;
+  resetNavigationDragState();
+  if (moved) renderNavigation();
 }
 
 function renderNavigation() {
   const currentCounts = counts();
-  document.getElementById("nav-list").innerHTML = navigation
+  const navList = document.getElementById("nav-list");
+  navList.innerHTML = navigation
     .map(
       (group) => `
         <div class="nav-section">
           <div class="nav-section-title">${escapeHtml(group.section)}</div>
           ${group.items
             .map(
-              (item) => `
-                <button class="nav-button ${activeView === item.id ? "is-active" : ""}" type="button" data-view="${escapeHtml(item.id)}" title="${escapeHtml(`${group.section} · ${item.label} · ${item.description}`)}" aria-label="${escapeHtml(`${group.section} ${item.label}: ${item.description}`)}">
+              (item, index) => `
+                <button class="nav-button ${activeView === item.id ? "is-active" : ""}" type="button" data-nav-draggable="true" data-view="${escapeHtml(item.id)}" data-nav-section="${escapeHtml(group.section)}" data-nav-index="${index}" title="${escapeHtml(`${group.section} · ${item.label} · ${item.description} · 같은 범주 안에서 드래그 정렬 가능`)}" aria-label="${escapeHtml(`${group.section} ${item.label}: ${item.description}. 같은 범주 안에서 드래그해서 순서를 바꿀 수 있습니다.`)}">
                   <span class="nav-button-main">
                     <span class="nav-icon" aria-hidden="true">${iconSvg(item.icon)}</span>
                     <span class="nav-text">
@@ -1243,20 +1417,72 @@ function renderNavigation() {
     )
     .join("");
 
-  document.querySelectorAll("[data-view]").forEach((button) => {
-    button.addEventListener("click", () => {
+  const navButtons = navList.querySelectorAll("[data-view]");
+  navButtons.forEach((button) => {
+    button.addEventListener("click", (event) => {
+      if (Date.now() < suppressNavClickUntil) {
+        event.preventDefault();
+        return;
+      }
       activeView = button.dataset.view;
       activeDetailType = defaultDetailForView(activeView);
       selectDefaultCaseForView(activeView);
       render();
     });
+
+    button.addEventListener("dragstart", (event) => {
+      draggedNavId = button.dataset.view;
+      draggedNavSection = button.dataset.navSection;
+      navDragMoved = false;
+      button.classList.add("is-dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", draggedNavId);
+    });
+
+    button.addEventListener("dragenter", (event) => {
+      if (!draggedNavId || button.dataset.view === draggedNavId) return;
+      const placement = navDropPlacement(button, event.clientY);
+      markNavigationDropTarget(button, placement);
+    });
+
+    button.addEventListener("dragover", (event) => {
+      if (!draggedNavId || button.dataset.view === draggedNavId) return;
+      if (button.dataset.navSection !== draggedNavSection) {
+        event.dataTransfer.dropEffect = "none";
+        markNavigationDropTarget(button, "before");
+        return;
+      }
+      event.preventDefault();
+      navDragMoved = true;
+      const placement = navDropPlacement(button, event.clientY);
+      event.dataTransfer.dropEffect = "move";
+      markNavigationDropTarget(button, placement);
+    });
+
+    button.addEventListener("drop", (event) => {
+      if (!draggedNavId || button.dataset.view === draggedNavId) return;
+      event.preventDefault();
+      const placement = navDropPlacement(button, event.clientY);
+      const moved = moveNavigationItem(draggedNavId, button.dataset.view, placement);
+      suppressNavClickUntil = Date.now() + 250;
+      resetNavigationDragState();
+      if (moved) renderNavigation();
+    });
+
+    button.addEventListener("dragend", resetNavigationDragState);
+    button.addEventListener("pointerdown", (event) => beginNavigationPointerDrag(button, event));
+    button.addEventListener("pointermove", updateNavigationPointerDrag);
+    button.addEventListener("pointerup", finishNavigationPointerDrag);
+    button.addEventListener("pointercancel", resetNavigationDragState);
   });
 }
 
 function renderShellState() {
   const shell = document.querySelector(".app-shell");
   const toggle = document.getElementById("properties-toggle");
-  if (shell) shell.classList.toggle("properties-collapsed", !propertiesOpen);
+  if (shell) {
+    shell.classList.toggle("properties-collapsed", !propertiesOpen);
+  }
   if (!toggle) return;
   toggle.setAttribute("aria-expanded", String(propertiesOpen));
   toggle.innerHTML = `${iconSvg(propertiesOpen ? "panel-close" : "panel-open")}<span>${propertiesOpen ? "상세 패널 닫기" : "상세 패널 열기"}</span>`;
@@ -1266,7 +1492,22 @@ function defaultDetailForView(view) {
   if ((view === "agents" || view === "orgchart") && selectedAgentId) return "agent";
   if (view === "skills" && selectedSkillId) return "skill";
   if (view === "jeonse" && selectedFeatureId) return "feature";
-  const summaryViews = ["agents", "orgchart", "skills", "routines", "goals", "activity", "budget", "settings"];
+  const summaryViews = [
+    "agents",
+    "orgchart",
+    "skills",
+    "routines",
+    "goals",
+    "activity",
+    "budget",
+    "settings",
+    "rm-dashboard",
+    "corporate-credit-dashboard",
+    "jeonse-protection-dashboard",
+    "consumer-protection-dashboard",
+    "fds-dashboard",
+    "compliance-dashboard",
+  ];
   if (summaryViews.includes(view)) return "view";
   return "case";
 }
@@ -1473,6 +1714,12 @@ function renderWorkbench() {
     budget: budgetPage,
     settings: settingsPage,
     plugins: pluginsPage,
+    "rm-dashboard": rmDashboardPage,
+    "corporate-credit-dashboard": corporateCreditDashboardPage,
+    "jeonse-protection-dashboard": jeonseProtectionDashboardPage,
+    "consumer-protection-dashboard": consumerProtectionDashboardPage,
+    "fds-dashboard": fdsDashboardPage,
+    "compliance-dashboard": complianceDashboardPage,
     "case-detail": () => caseDetailPage(currentCase()),
   };
 
@@ -1662,6 +1909,942 @@ function dashboardPage() {
       </div>
     </section>
   `;
+}
+
+function rmDashboardPage() {
+  const rmKpis = [
+    ["오늘 우선 상담", "7건", "고위험 3건 · 보증/정책금융 후보 4건", "users"],
+    ["승인 대기", "2건", "고객 안내 전 RM 확인 필요", "check-square"],
+    ["서류 보완", "6건", "사업자·세무·임대차 자료 누락 탐지", "file-text"],
+    ["후속관리", "4건", "EWS·연체·만기연장 알림", "activity"],
+  ];
+  const rmWork = [
+    {
+      title: "상담 전 AI 브리핑",
+      caseId: "case-104",
+      customer: "전주 중앙로 카페",
+      detail: "매출 둔화, 금리 민감도, 정책금융 후보, 콜백 질문을 RM 검토용으로 요약합니다.",
+      status: "오늘 16:00",
+      skills: ["거래이력 요약", "상담 질문", "정책금융 후보"],
+    },
+    {
+      title: "여신 서류 체크",
+      caseId: "case-118",
+      customer: "광주 송정 도소매",
+      detail: "사업자등록, 부가세 자료, 임대차·세금계산서 누락 여부를 대조합니다.",
+      status: "보완 요청",
+      skills: ["서류 누락", "증빙 대조", "KYC"],
+    },
+    {
+      title: "품의·심사 연결",
+      caseId: "case-201",
+      customer: "서울 신축빌라 전세 예정",
+      detail: "RM 의견 초안, 근거 링크, 사람 승인 게이트를 묶어 심사/준법 검토로 넘깁니다.",
+      status: "승인 대기",
+      skills: ["품의 초안", "근거 패킷", "승인 게이트"],
+    },
+    {
+      title: "사후관리·EWS",
+      caseId: "case-127",
+      customer: "군산 부품 제조업",
+      detail: "조기경보 신호, 자금용도 점검, 기록 보관 필요 항목을 RM 후속 태스크로 정리합니다.",
+      status: "상위 검토",
+      skills: ["EWS", "사후점검", "감사로그"],
+    },
+  ];
+  const rmFlow = [
+    ["01", "고객 신호 수집", "상담 메모, 거래 이력, 정책/보증 가능성을 한곳에 모읍니다."],
+    ["02", "사전 브리핑", "AI가 확인할 항목과 질문 후보만 제안하고 RM이 판단합니다."],
+    ["03", "서류·근거 대조", "누락 서류, 증빙 불일치, 신뢰도 낮은 근거를 표시합니다."],
+    ["04", "품의·승인 연결", "고객 영향 행동은 승인 큐를 거쳐야만 다음 단계로 넘어갑니다."],
+    ["05", "사후관리 기록", "콜메모, 후속 태스크, 감사 로그를 케이스에 남깁니다."],
+  ];
+  const roleCases = [
+    ["신규여신 상담", "필요서류와 자금용도를 정리하고 상담 전 질문지를 만듭니다."],
+    ["만기연장·조건변경", "기존 조건, 갱신 리스크, 고객 안내 초안을 비교합니다."],
+    ["정책금융·보증서 매칭", "지역신보·정책자금 후보와 누락 서류를 좁힙니다."],
+    ["사후관리·연체 알림", "EWS, 연체, 자금용도 점검을 후속 조치로 전환합니다."],
+  ];
+
+  return `
+    ${pageHeader("담당자 유형", "RM 역할 대시보드", "RM이 상담, 여신 서류, 품의 연결, 사후관리까지 한 화면에서 처리하도록 구성한 역할 전용 화면입니다.")}
+    <section class="workspace-panel rm-hero">
+      <div>
+        <p class="eyebrow">RM 업무 사이클</p>
+        <h3>AI는 확인할 항목을 제안하고, 고객 영향 행동은 RM이 승인합니다.</h3>
+        <p>리서치 기준 RM 업무는 상담, 서류징구·대조, 신용평가 입력, 품의·심사 핸드오프, 실행 후 사후관리와 기록보관까지 이어집니다. 이 화면은 그 반복 업무를 케이스 큐로 묶어 다음 행동을 바로 보이게 합니다.</p>
+      </div>
+      <div class="rm-hero-actions">
+        <span class="status-pill status-approved">PII 비반출</span>
+        <span class="status-pill status-pending">사람 승인 우선</span>
+        <span class="status-pill status-new">근거 기록</span>
+      </div>
+    </section>
+    <section class="rm-kpi-grid" aria-label="RM KPI">
+      ${rmKpis
+        .map(
+          ([label, value, description, icon]) => `
+            <article class="rm-kpi-card">
+              <span class="rm-kpi-icon" aria-hidden="true">${iconSvg(icon)}</span>
+              <div>
+                <p>${escapeHtml(label)}</p>
+                <strong>${escapeHtml(value)}</strong>
+                <span>${escapeHtml(description)}</span>
+              </div>
+            </article>
+          `,
+        )
+        .join("")}
+    </section>
+    <section class="rm-layout-grid">
+      ${panelMarkup(
+        "오늘 처리",
+        "RM 업무 큐",
+        `<div class="rm-work-list">
+          ${rmWork
+            .map(
+              (item) => `
+                <button class="rm-work-card" type="button" data-case-id="${escapeHtml(item.caseId)}">
+                  <div class="rm-work-head">
+                    <span>${escapeHtml(item.title)}</span>
+                    <span class="status-pill ${item.status === "상위 검토" ? "status-escalated" : item.status === "승인 대기" || item.status === "보완 요청" ? "status-pending" : "status-new"}">${escapeHtml(item.status)}</span>
+                  </div>
+                  <strong>${escapeHtml(item.customer)}</strong>
+                  <p>${escapeHtml(item.detail)}</p>
+                  <div class="tag-row">${item.skills.map((skill) => `<span class="tag">${escapeHtml(skill)}</span>`).join("")}</div>
+                </button>
+              `,
+            )
+            .join("")}
+        </div>`,
+        "rm-work-panel",
+      )}
+      ${panelMarkup(
+        "프로세스",
+        "RM 업무 흐름",
+        `<div class="rm-flow-list">
+          ${rmFlow
+            .map(
+              ([step, title, description]) => `
+                <article class="rm-flow-step">
+                  <span>${escapeHtml(step)}</span>
+                  <div>
+                    <strong>${escapeHtml(title)}</strong>
+                    <p>${escapeHtml(description)}</p>
+                  </div>
+                </article>
+              `,
+            )
+            .join("")}
+        </div>`,
+        "rm-flow-panel",
+      )}
+    </section>
+    <section class="rm-layout-grid rm-layout-bottom">
+      ${panelMarkup(
+        "케이스 유형",
+        "RM이 맡는 업무 범주",
+        `<div class="rm-role-case-grid">
+          ${roleCases
+            .map(
+              ([title, description]) => `
+                <article class="rm-role-case">
+                  <strong>${escapeHtml(title)}</strong>
+                  <p>${escapeHtml(description)}</p>
+                </article>
+              `,
+            )
+            .join("")}
+        </div>`,
+        "rm-role-panel",
+      )}
+      ${panelMarkup(
+        "통제 원칙",
+        "RM 승인 전 자동 실행 금지",
+        `<div class="rm-control-box">
+          <div class="rm-control-main">
+            <span aria-hidden="true">${iconSvg("lock")}</span>
+            <div>
+              <strong>고객 안내·조건 제시·거래 제한은 승인 큐를 통과해야 합니다.</strong>
+              <p>AI 산출물은 상담 브리핑, 서류 체크, 품의 초안, 사후관리 기록까지만 생성합니다. 최종 조건 제시와 고객 영향 행동은 RM 또는 지정 승인자가 처리합니다.</p>
+            </div>
+          </div>
+          <div class="property-list">
+            ${propertyRow("외부 반출", "토큰화·마스킹 후 검증")}
+            ${propertyRow("감사 기록", "Case → Evidence → Approval → Audit")}
+            ${propertyRow("미검증 값", "추정/미검증 표기 유지")}
+          </div>
+        </div>`,
+        "rm-control-panel panel-primary",
+      )}
+    </section>
+  `;
+}
+
+function corporateCreditDashboardPage() {
+  const creditKpis = [
+    ["심사 패킷", "9건", "상담·서류·담보·품의 초안 묶음", "file-text"],
+    ["서류 보완", "5건", "재무제표·납세·등기·견적 누락", "check-square"],
+    ["본부 심사", "3건", "전결 초과·고위험·예외 승인 후보", "users"],
+    ["사후점검", "4건", "자금용도·PF·리스/할부 통제", "activity"],
+  ];
+  const creditWork = [
+    {
+      title: "운전자금 신규여신 검토",
+      caseId: "case-104",
+      customer: "전주 중앙로 카페",
+      detail: "매출 둔화, 비용 부담, 1회전 운전자금 적정 한도와 상환 가능성을 심사 패킷으로 정리합니다.",
+      status: "심사 준비",
+      skills: ["매출·현금흐름", "상환능력", "품의 초안"],
+    },
+    {
+      title: "시설자금·기계류 할부 검토",
+      caseId: "case-127",
+      customer: "군산 부품 제조업",
+      detail: "설비 견적, 담보·리스 물건, 회수 가능성, CREFIA 리스/할부 공시 참고 항목을 대조합니다.",
+      status: "본부 심사",
+      skills: ["시설자금", "담보가치", "리스·할부"],
+    },
+    {
+      title: "보증서·정책금융 구조화",
+      caseId: "case-118",
+      customer: "광주 송정 도소매",
+      detail: "지역신보·정책자금 후보, 보증 가능 금액, 제출 서류 누락 여부를 담당자 검토용으로 좁힙니다.",
+      status: "보완 요청",
+      skills: ["보증 매칭", "정책자금", "서류 체크"],
+    },
+    {
+      title: "자금용도외 유용 사후점검",
+      caseId: "case-133",
+      customer: "익산 음식점",
+      detail: "대출 실행 후 세금계산서, 송금 내역, 사용처 증빙을 대조해 이상 지출 신호를 표시합니다.",
+      status: "점검 대기",
+      skills: ["자금용도", "증빙 대조", "감사 기록"],
+    },
+  ];
+  const creditFlow = [
+    ["01", "상담·신청 접수", "운전자금/시설자금/리스·할부 목적과 차주 실체를 분리합니다."],
+    ["02", "서류·공시 체크", "재무제표, 세무, 등기, 견적, CREFIA 공시/규정 참고 항목을 대조합니다."],
+    ["03", "신용·상환 분석", "현금흐름, 이자보상, 부채비율, 담보·보증을 한 화면에서 점검합니다."],
+    ["04", "전결·본부심사 라우팅", "전결 가능, 본부 심사, 여신위원회 후보를 규칙 기반으로 분기합니다."],
+    ["05", "약정·실행 전 통제", "조건 제시와 실행은 승인 큐를 통과한 항목만 다음 단계로 보냅니다."],
+    ["06", "사후점검·감사기록", "자금용도, 연체/EWS, 담보 변동, 감사 로그를 케이스에 남깁니다."],
+  ];
+  const roleCases = [
+    ["운전자금", "매출 회전, 원재료·인건비 소요, 적정 한도와 상환 재원을 검토합니다."],
+    ["시설자금", "설비·공장·사업장 투자 목적, 자기자본 투입, 장기 현금흐름을 확인합니다."],
+    ["리스·할부금융", "기계류·차량·기타할부 공시 기준과 물건 회수 가능성을 대조합니다."],
+    ["부동산PF/고위험", "PF 모범규준, 익스포저 한도, 본부 심사·위원회 상정 필요성을 표시합니다."],
+    ["보증·정책금융", "신보·기보·지역신보·지자체 정책자금 후보와 누락 서류를 정리합니다."],
+    ["사후관리", "자금용도외 유용, EWS, 만기연장, 감사 검증 대상 여부를 기록합니다."],
+  ];
+
+  return `
+    ${pageHeader("담당자 유형", "기업여신 담당자 대시보드", "기업여신 담당자가 상담 접수부터 품의, 심사 라우팅, 실행 전 통제, 사후점검까지 처리하도록 구성한 역할 전용 화면입니다.")}
+    <section class="workspace-panel rm-hero">
+      <div>
+        <p class="eyebrow">기업여신 업무 사이클</p>
+        <h3>AI는 심사 가능한 패킷을 만들고, 조건 확정은 사람이 승인합니다.</h3>
+        <p>리서치 기준 기업여신은 자금용도 확인, 서류·재무·담보 분석, 전결권 분기, 약정/실행, 사후관리로 이어집니다. 이 화면은 CREFIA의 여신금융업권 법규·자율규제·상품공시 항목을 참고해 담당자가 무엇을 먼저 확인해야 하는지 보여줍니다.</p>
+      </div>
+      <div class="rm-hero-actions">
+        <span class="status-pill status-approved">PII 비반출</span>
+        <span class="status-pill status-pending">전결 라우팅</span>
+        <span class="status-pill status-new">CREFIA 참고</span>
+      </div>
+    </section>
+    <section class="rm-kpi-grid" aria-label="기업여신 KPI">
+      ${creditKpis
+        .map(
+          ([label, value, description, icon]) => `
+            <article class="rm-kpi-card">
+              <span class="rm-kpi-icon" aria-hidden="true">${iconSvg(icon)}</span>
+              <div>
+                <p>${escapeHtml(label)}</p>
+                <strong>${escapeHtml(value)}</strong>
+                <span>${escapeHtml(description)}</span>
+              </div>
+            </article>
+          `,
+        )
+        .join("")}
+    </section>
+    <section class="rm-layout-grid">
+      ${panelMarkup(
+        "오늘 처리",
+        "기업여신 업무 큐",
+        `<div class="rm-work-list">
+          ${creditWork
+            .map(
+              (item) => `
+                <button class="rm-work-card" type="button" data-case-id="${escapeHtml(item.caseId)}">
+                  <div class="rm-work-head">
+                    <span>${escapeHtml(item.title)}</span>
+                    <span class="status-pill ${item.status === "본부 심사" ? "status-escalated" : item.status === "보완 요청" ? "status-pending" : "status-new"}">${escapeHtml(item.status)}</span>
+                  </div>
+                  <strong>${escapeHtml(item.customer)}</strong>
+                  <p>${escapeHtml(item.detail)}</p>
+                  <div class="tag-row">${item.skills.map((skill) => `<span class="tag">${escapeHtml(skill)}</span>`).join("")}</div>
+                </button>
+              `,
+            )
+            .join("")}
+        </div>`,
+        "rm-work-panel",
+      )}
+      ${panelMarkup(
+        "프로세스",
+        "기업여신 처리 흐름",
+        `<div class="rm-flow-list">
+          ${creditFlow
+            .map(
+              ([step, title, description]) => `
+                <article class="rm-flow-step">
+                  <span>${escapeHtml(step)}</span>
+                  <div>
+                    <strong>${escapeHtml(title)}</strong>
+                    <p>${escapeHtml(description)}</p>
+                  </div>
+                </article>
+              `,
+            )
+            .join("")}
+        </div>`,
+        "rm-flow-panel",
+      )}
+    </section>
+    <section class="rm-layout-grid rm-layout-bottom">
+      ${panelMarkup(
+        "케이스 유형",
+        "기업여신 담당 업무 범주",
+        `<div class="rm-role-case-grid">
+          ${roleCases
+            .map(
+              ([title, description]) => `
+                <article class="rm-role-case">
+                  <strong>${escapeHtml(title)}</strong>
+                  <p>${escapeHtml(description)}</p>
+                </article>
+              `,
+            )
+            .join("")}
+        </div>`,
+        "rm-role-panel",
+      )}
+      ${panelMarkup(
+        "통제 원칙",
+        "기업여신 승인 전 자동 실행 금지",
+        `<div class="rm-control-box">
+          <div class="rm-control-main">
+            <span aria-hidden="true">${iconSvg("lock")}</span>
+            <div>
+              <strong>한도·금리·약정·실행은 승인 큐를 통과해야 합니다.</strong>
+              <p>AI 산출물은 서류 대조, 심사 의견 초안, 전결 라우팅, 자금용도 점검까지 제안합니다. 차주에게 영향을 주는 조건 확정과 실행은 기업여신 담당자 또는 여신심사역의 승인 뒤에만 진행됩니다.</p>
+            </div>
+          </div>
+          <div class="property-list">
+            ${propertyRow("업권 참고", "여신전문금융업법·감독규정·자율규제")}
+            ${propertyRow("공시 참고", "리스/할부·신용대출·경영공시")}
+            ${propertyRow("감사 기록", "상담 → 심사패킷 → 승인 → 실행전 통제")}
+          </div>
+        </div>`,
+        "rm-control-panel panel-primary",
+      )}
+    </section>
+  `;
+}
+
+function roleStatusPillClass(status) {
+  if (/긴급|상위|차단|위반|지급정지|사고/.test(status)) return "status-escalated";
+  if (/대기|검토|보완|소명|승인|재심|점검/.test(status)) return "status-pending";
+  if (/완료|통과|정상|활성/.test(status)) return "status-approved";
+  return "status-new";
+}
+
+function roleDashboardPage(config) {
+  return `
+    ${pageHeader("담당자 유형", config.title, config.description)}
+    <section class="workspace-panel rm-hero">
+      <div>
+        <p class="eyebrow">${escapeHtml(config.heroEyebrow)}</p>
+        <h3>${escapeHtml(config.heroTitle)}</h3>
+        <p>${escapeHtml(config.heroBody)}</p>
+      </div>
+      <div class="rm-hero-actions">
+        ${config.badges.map((badge) => `<span class="status-pill ${escapeHtml(badge.className)}">${escapeHtml(badge.label)}</span>`).join("")}
+      </div>
+    </section>
+    <section class="rm-kpi-grid" aria-label="${escapeHtml(config.title)} KPI">
+      ${config.kpis
+        .map(
+          ([label, value, description, icon]) => `
+            <article class="rm-kpi-card">
+              <span class="rm-kpi-icon" aria-hidden="true">${iconSvg(icon)}</span>
+              <div>
+                <p>${escapeHtml(label)}</p>
+                <strong>${escapeHtml(value)}</strong>
+                <span>${escapeHtml(description)}</span>
+              </div>
+            </article>
+          `,
+        )
+        .join("")}
+    </section>
+    <section class="rm-layout-grid">
+      ${panelMarkup(
+        "오늘 처리",
+        config.workTitle,
+        `<div class="rm-work-list">
+          ${config.work
+            .map(
+              (item) => `
+                <button class="rm-work-card" type="button" data-case-id="${escapeHtml(item.caseId)}">
+                  <div class="rm-work-head">
+                    <span>${escapeHtml(item.title)}</span>
+                    <span class="status-pill ${roleStatusPillClass(item.status)}">${escapeHtml(item.status)}</span>
+                  </div>
+                  <strong>${escapeHtml(item.customer)}</strong>
+                  <p>${escapeHtml(item.detail)}</p>
+                  <div class="tag-row">${item.skills.map((skill) => `<span class="tag">${escapeHtml(skill)}</span>`).join("")}</div>
+                </button>
+              `,
+            )
+            .join("")}
+        </div>`,
+        "rm-work-panel",
+      )}
+      ${panelMarkup(
+        "프로세스",
+        config.flowTitle,
+        `<div class="rm-flow-list">
+          ${config.flow
+            .map(
+              ([step, title, description]) => `
+                <article class="rm-flow-step">
+                  <span>${escapeHtml(step)}</span>
+                  <div>
+                    <strong>${escapeHtml(title)}</strong>
+                    <p>${escapeHtml(description)}</p>
+                  </div>
+                </article>
+              `,
+            )
+            .join("")}
+        </div>`,
+        "rm-flow-panel",
+      )}
+    </section>
+    <section class="rm-layout-grid rm-layout-bottom">
+      ${panelMarkup(
+        "업무 범주",
+        config.roleCaseTitle,
+        `<div class="rm-role-case-grid">
+          ${config.roleCases
+            .map(
+              ([title, description]) => `
+                <article class="rm-role-case">
+                  <strong>${escapeHtml(title)}</strong>
+                  <p>${escapeHtml(description)}</p>
+                </article>
+              `,
+            )
+            .join("")}
+        </div>`,
+        "rm-role-panel",
+      )}
+      ${panelMarkup(
+        "통제 원칙",
+        config.controlTitle,
+        `<div class="rm-control-box">
+          <div class="rm-control-main">
+            <span aria-hidden="true">${iconSvg(config.controlIcon)}</span>
+            <div>
+              <strong>${escapeHtml(config.controlLead)}</strong>
+              <p>${escapeHtml(config.controlBody)}</p>
+            </div>
+          </div>
+          <div class="property-list">
+            ${config.controlRows.map(([label, value]) => propertyRow(label, value)).join("")}
+          </div>
+        </div>`,
+        "rm-control-panel panel-primary",
+      )}
+    </section>
+  `;
+}
+
+function roleDashboardContextMarkup(config) {
+  return `
+    ${compactPanel(
+      config.context.roleEyebrow,
+      config.context.roleTitle,
+      `<div class="property-list">
+        ${config.context.roleRows.map(([label, value]) => propertyRow(label, value)).join("")}
+      </div>`,
+    )}
+    ${compactPanel(
+      "오늘 우선순위",
+      config.context.priorityTitle,
+      `<div class="context-list">
+        ${config.context.priorities.map(([title, description, metric]) => workItem(title, description, metric)).join("")}
+      </div>`,
+    )}
+    ${compactPanel(
+      "참고 기준",
+      config.context.referenceTitle,
+      `<div class="property-list">
+        ${config.context.references.map(([label, value]) => propertyRow(label, value)).join("")}
+      </div>`,
+    )}
+  `;
+}
+
+function jeonseProtectionDashboardConfig() {
+  return {
+    title: "전세보호 담당자 대시보드",
+    description: "전세 계약 전 권리관계, 주변 시세, 보증 가능성, 피해지원 연결까지 확인하는 역할 전용 화면입니다.",
+    heroEyebrow: "전세 보호 업무 사이클",
+    heroTitle: "AI는 위험 신호를 묶고, 대출·계약 진행은 사람이 승인합니다.",
+    heroBody: "국토교통부 전세사기피해자 지원관리시스템, HUG 전세피해지원센터, 전세사기피해자 지원 특별법 흐름을 참고해 등기·신탁·선순위채권·전세가율·보증보험 가능성을 한 번에 점검합니다.",
+    badges: [
+      { label: "HUG/HF/SGI 확인", className: "status-new" },
+      { label: "권리관계 검토", className: "status-pending" },
+      { label: "피해지원 연결", className: "status-approved" },
+    ],
+    kpis: [
+      ["고위험 계약", "4건", "전세가율·선순위채권·신탁 신호", "shield"],
+      ["보증 확인", "3건", "보증보험 가입 가능성 재검토", "check-square"],
+      ["권리 하자", "2건", "근저당·압류·신탁등기 확인 필요", "file-text"],
+      ["지원 연결", "5건", "법률·주거·금융지원 안내 후보", "link"],
+    ],
+    workTitle: "전세보호 업무 큐",
+    work: [
+      {
+        title: "전세가율·주변 시세 점검",
+        caseId: "case-201",
+        customer: "서울 신축빌라 전세 예정",
+        detail: "보증금이 주변 실거래·매매가 대비 높은지 확인하고 HUG 담보인정비율 기준을 함께 표시합니다.",
+        status: "검토 대기",
+        skills: ["전세가율", "주변 시세", "보증금 과다"],
+      },
+      {
+        title: "등기·신탁·선순위 권리 확인",
+        caseId: "case-104",
+        customer: "전주 중앙로 임차 상담",
+        detail: "근저당, 압류, 신탁등기, 단기 소유권 이전 여부를 분리해 계약 전 확인 항목으로 정리합니다.",
+        status: "상위 검토",
+        skills: ["등기 권리", "신탁 확인", "선순위채권"],
+      },
+      {
+        title: "보증보험 가입 가능성",
+        caseId: "case-118",
+        customer: "광주 오피스텔 임차인",
+        detail: "임대인, 주택 유형, 보증금, 선순위채권, 보증기관 조건을 비교해 가입 가능성을 제안합니다.",
+        status: "보완 요청",
+        skills: ["HUG 확인", "HF/SGI 후보", "서류 누락"],
+      },
+      {
+        title: "피해지원·법률상담 연결",
+        caseId: "case-133",
+        customer: "익산 전세계약 피해 상담",
+        detail: "결정신청, 이의신청, 법률·심리·주거지원 연결 여부를 사람이 확인할 수 있게 묶습니다.",
+        status: "승인 대기",
+        skills: ["특별법", "지원신청", "상담 연결"],
+      },
+    ],
+    flowTitle: "전세보호 처리 흐름",
+    flow: [
+      ["01", "상담·계약 정보 접수", "주소, 보증금, 계약 예정일, 임대인, 중개사 정보를 가상 데이터로 구조화합니다."],
+      ["02", "시세·전세가율 확인", "주변 시세 대비 보증금 과다, 전세가율, 가격 급변 신호를 먼저 봅니다."],
+      ["03", "등기·권리관계 확인", "근저당, 압류, 신탁등기, 선순위 권리, 단기 소유권 이전을 체크합니다."],
+      ["04", "보증보험 가능성 검토", "HUG/HF/SGI 가입 가능성과 보완 서류를 후보로 제시합니다."],
+      ["05", "안전계약 승인 게이트", "특약 문구와 계약 진행 안내는 담당자 승인 뒤에만 고객에게 나갑니다."],
+      ["06", "피해지원·사후기록", "위험 계약은 지원기관 연결, 법률상담, 감사 로그로 남깁니다."],
+    ],
+    roleCaseTitle: "전세 위험 신호 범주",
+    roleCases: [
+      ["전세가율 과다", "보증금이 매매가 또는 주변 시세 대비 높을 때 우선 경고합니다."],
+      ["권리관계 위험", "근저당·압류·가압류·신탁등기·선순위채권을 계약 전 확인합니다."],
+      ["소유권 변동", "단기간 소유권 이전, 법인 임대인, 다주택 임대인 신호를 표시합니다."],
+      ["보증보험 불가", "보증기관별 가입 제한 가능성과 보완 서류를 분리합니다."],
+      ["임차인 자산 위험", "총자산 대비 보증금, 월소득 대비 주거비, 대출 상환 가능성을 봅니다."],
+      ["피해지원 연결", "특별법 결정신청, 이의신청, 주거·금융·법률지원 흐름을 안내합니다."],
+    ],
+    controlTitle: "전세보호 승인 전 고객 안내 금지",
+    controlIcon: "lock",
+    controlLead: "계약 진행, 대출 상담, 보증 가능 안내는 사람이 최종 확인합니다.",
+    controlBody: "AI는 위험 신호, 서류 누락, 특약 후보, 보증기관 후보를 제안합니다. 계약 안전성 확정 표현이나 보증 가능 확정 표현은 담당자 승인 없이는 고객에게 표시하지 않습니다.",
+    controlRows: [
+      ["법령 참고", "전세사기피해자 지원 및 주거안정 특별법"],
+      ["기관 연결", "국토부·HUG·HF·SGI·법률지원"],
+      ["감사 기록", "상담 → 위험점검 → 승인 → 고객안내"],
+    ],
+    context: {
+      roleEyebrow: "전세보호 역할",
+      roleTitle: "계약 전 위험을 먼저 줄이는 담당자",
+      roleRows: [
+        ["핵심 업무", "권리관계·전세가율·보증가능성·피해지원"],
+        ["AI 역할", "등기/시세/보증 조건 후보와 체크리스트 제안"],
+        ["사람 역할", "고객 안내·계약 진행·지원기관 연결 승인"],
+      ],
+      priorityTitle: "전세보호 담당자가 먼저 볼 항목",
+      priorities: [
+        ["고위험 계약", "전세가율 90% 이상 또는 선순위권리 존재", "4건"],
+        ["보증 불확실", "보증기관 가입 조건과 누락 서류 재검토", "3건"],
+        ["피해지원 후보", "결정신청·법률지원 연결 가능 케이스", "5건"],
+      ],
+      referenceTitle: "외부 참고 기준",
+      references: [
+        ["정부 시스템", "전세사기피해자 지원관리시스템"],
+        ["지원기관", "HUG 전세피해지원센터"],
+        ["법령", "전세사기피해자 지원 및 주거안정 특별법"],
+      ],
+    },
+  };
+}
+
+function consumerProtectionDashboardConfig() {
+  return {
+    title: "소비자 보호 담당자 대시보드",
+    description: "적합성·적정성, 설명의무, 부당권유, 민원·분쟁, 취약고객 보호를 한 화면에서 처리하는 역할 전용 화면입니다.",
+    heroEyebrow: "금융소비자 보호 업무 사이클",
+    heroTitle: "AI는 위험 문구와 누락 설명을 찾아주고, 보호 조치는 사람이 확정합니다.",
+    heroBody: "금융소비자보호법상 적합성·적정성 원칙, 불완전판매 예방, 소비자보호 조직 독립성, 민원 대응 흐름을 반영해 고객에게 나가기 전 문구와 근거를 검토합니다.",
+    badges: [
+      { label: "적합성 점검", className: "status-new" },
+      { label: "부당권유 차단", className: "status-escalated" },
+      { label: "민원 SLA", className: "status-pending" },
+    ],
+    kpis: [
+      ["고위험 권유", "6건", "확정·과장·오인 표현 검토", "alert"],
+      ["설명의무 보완", "4건", "위험·수수료·중도해지 설명 누락", "file-text"],
+      ["민원 SLA", "3건", "답변 초안과 근거 보강 필요", "history"],
+      ["취약고객", "5건", "고령·디지털 취약 고객 안내 강화", "users"],
+    ],
+    workTitle: "소비자보호 업무 큐",
+    work: [
+      {
+        title: "적합성·적정성 재점검",
+        caseId: "case-104",
+        customer: "전주 중앙로 카페",
+        detail: "상담 기록과 상품 특성을 대조해 부적합·부적정 가능성과 고객 확인 문구를 정리합니다.",
+        status: "검토 대기",
+        skills: ["적합성", "적정성", "고객속성"],
+      },
+      {
+        title: "부당권유 문구 차단",
+        caseId: "case-118",
+        customer: "광주 송정 도소매",
+        detail: "확정 수익, 손실 축소, 대출 유도성 표현을 고객 안내 전 승인 게이트로 올립니다.",
+        status: "위반 후보",
+        skills: ["표현 점검", "광고심의", "금지문구"],
+      },
+      {
+        title: "민원 답변 근거 패킷",
+        caseId: "case-133",
+        customer: "익산 음식점",
+        detail: "민원 요지, 상담 이력, 약관·설명서 근거, 보완 조치 후보를 답변 초안으로 묶습니다.",
+        status: "보완 요청",
+        skills: ["민원 분류", "근거 패킷", "답변 초안"],
+      },
+      {
+        title: "취약고객 안내 강화",
+        caseId: "case-201",
+        customer: "서울 전세대출 고객",
+        detail: "고령·사회초년생·디지털 취약 고객에게 필요한 추가 설명과 재확인 절차를 표시합니다.",
+        status: "승인 대기",
+        skills: ["취약고객", "쉬운 문구", "재확인"],
+      },
+    ],
+    flowTitle: "소비자보호 처리 흐름",
+    flow: [
+      ["01", "고객 속성 확인", "투자성향, 상환능력, 취약고객 여부, 기존 상담 기록을 확인합니다."],
+      ["02", "상품·권유 적합성 점검", "상품 위험과 고객 상황이 맞는지 부적합 후보를 표시합니다."],
+      ["03", "설명·고지 누락 탐지", "위험, 수수료, 중도해지, 대체상품, 불이익 설명 누락을 찾습니다."],
+      ["04", "부당권유 표현 차단", "확정·과장·오인·불완전판매 유발 문구를 승인 전 차단합니다."],
+      ["05", "민원·분쟁 답변", "근거, 녹취/메모, 조치 계획을 묶어 답변 초안을 만듭니다."],
+      ["06", "개선 요구·교육", "반복 위반 유형은 영업점·상품·프로세스 개선으로 넘깁니다."],
+    ],
+    roleCaseTitle: "소비자보호 업무 범주",
+    roleCases: [
+      ["적합성·적정성", "고객 상황에 맞지 않는 상품 권유 가능성을 사전 점검합니다."],
+      ["설명의무", "위험·비용·불이익·대안 설명 누락을 찾아 담당자에게 보완 요청합니다."],
+      ["부당권유", "확정 수익, 손실 축소, 대출 강요성 표현을 차단합니다."],
+      ["민원·분쟁", "민원 요지, 근거 자료, 답변 초안, 후속 조치를 연결합니다."],
+      ["취약고객 보호", "고령자, 사회초년생, 디지털 취약 고객에게 쉬운 안내와 재확인을 붙입니다."],
+      ["내부 개선", "반복 민원과 위반 문구를 교육·정책·상품 개선 과제로 전환합니다."],
+    ],
+    controlTitle: "소비자 보호 승인 전 고객 발송 금지",
+    controlIcon: "shield",
+    controlLead: "고객 안내문, 민원 답변, 권유 문구는 보호 담당자 승인 뒤에만 나갑니다.",
+    controlBody: "AI는 위험 문구와 설명 누락을 찾아 보완안을 제안합니다. 고객에게 권리·비용·혜택을 확정하는 표현은 보호 담당자가 근거를 확인한 뒤 발송됩니다.",
+    controlRows: [
+      ["법령 참고", "금융소비자보호법·적합성/적정성 원칙"],
+      ["통제 대상", "광고·권유·설명서·민원 답변"],
+      ["감사 기록", "탐지 문구 → 보완 → 승인 → 고객 발송"],
+    ],
+    context: {
+      roleEyebrow: "소비자보호 역할",
+      roleTitle: "고객 오해와 불완전판매를 줄이는 담당자",
+      roleRows: [
+        ["핵심 업무", "적합성·설명의무·부당권유·민원·취약고객"],
+        ["AI 역할", "위험 문구 탐지·근거 패킷·답변 초안 제안"],
+        ["사람 역할", "고객 발송 승인·보상/개선 판단"],
+      ],
+      priorityTitle: "소비자보호 담당자가 먼저 볼 항목",
+      priorities: [
+        ["고위험 권유 문구", "확정·과장·오인 가능 문구", "6건"],
+        ["설명의무 누락", "위험·비용·해지 설명 보완", "4건"],
+        ["민원 SLA", "답변 마감과 근거 보강 필요", "3건"],
+      ],
+      referenceTitle: "외부 참고 기준",
+      references: [
+        ["법령", "금융소비자보호법"],
+        ["감독 방향", "불완전판매 예방·소비자보호 조직 강화"],
+        ["내부 통제", "권유 문구·설명서·민원 답변 승인 로그"],
+      ],
+    },
+  };
+}
+
+function fdsDashboardConfig() {
+  return {
+    title: "보이스피싱/FDS 담당자 대시보드",
+    description: "실시간 이상거래 탐지, 보이스피싱 신호, 지급정지 후보, 오탐 소명을 한 화면에서 처리하는 역할 전용 화면입니다.",
+    heroEyebrow: "FDS·보이스피싱 대응 사이클",
+    heroTitle: "AI는 의심 신호를 묶고, 피해 방지 차단과 해제는 기록 기반으로 처리합니다.",
+    heroBody: "금융권 공동 FDS 탐지룰, 신종 보이스피싱·대포통장 의심룰, 신고·피해구제 절차를 참고해 선제 차단 후보와 오탐 재심 큐를 분리합니다.",
+    badges: [
+      { label: "공동 탐지룰", className: "status-new" },
+      { label: "긴급 차단", className: "status-escalated" },
+      { label: "오탐 재심", className: "status-pending" },
+    ],
+    kpis: [
+      ["실시간 경보", "12건", "기관사칭·앱설치·새벽이체 신호", "alert"],
+      ["지급정지 후보", "4건", "피해 확산 방지 선차단 대상", "lock"],
+      ["룰 업데이트", "6건", "공동룰·자체룰 개선 후보", "refresh-cw"],
+      ["오탐 재심", "2건", "소명 자료와 해제 승인 대기", "check-square"],
+    ],
+    workTitle: "FDS 대응 업무 큐",
+    work: [
+      {
+        title: "기관사칭 패턴 탐지",
+        caseId: "case-133",
+        customer: "익산 음식점",
+        detail: "검찰·금감원 사칭, 원격제어 앱 설치, 신규 수취인 고액 이체를 묶어 긴급 경보로 올립니다.",
+        status: "긴급 차단",
+        skills: ["기관사칭", "원격앱", "고액이체"],
+      },
+      {
+        title: "대포통장 의심계좌",
+        caseId: "case-127",
+        customer: "군산 부품 제조업",
+        detail: "짧은 기간 다수 입금·분산 출금, 신규 계좌 급증, 타행 신고 이력을 대조합니다.",
+        status: "지급정지 후보",
+        skills: ["대포통장", "분산출금", "타행공조"],
+      },
+      {
+        title: "새벽 이체·기기 변경 룰",
+        caseId: "case-104",
+        customer: "전주 중앙로 카페",
+        detail: "기기 변경 직후 새벽 시간대 이체와 인증 실패 패턴을 자체룰 개선 후보로 기록합니다.",
+        status: "룰 점검",
+        skills: ["기기변경", "시간대 룰", "인증 실패"],
+      },
+      {
+        title: "오탐 소명·해제 검토",
+        caseId: "case-118",
+        customer: "광주 송정 도소매",
+        detail: "정상 거래 소명 자료, 통화 기록, 영업점 확인을 묶어 해제 승인 큐로 보냅니다.",
+        status: "재심 대기",
+        skills: ["오탐 소명", "해제 승인", "고객 안내"],
+      },
+    ],
+    flowTitle: "FDS 처리 흐름",
+    flow: [
+      ["01", "거래·기기·상담 신호 수집", "거래 패턴, 신규 수취인, 기기 변경, 상담 메모를 실시간 이벤트로 받습니다."],
+      ["02", "공동룰·자체룰 점수화", "금융권 공동 탐지룰과 회사별 룰을 함께 적용합니다."],
+      ["03", "긴급 차단·지급정지 후보", "피해 확산 우려 거래는 선차단 후보로 올리고 해제는 승인 큐로 분리합니다."],
+      ["04", "타행·기관 공조", "112, 1332, 지급정지 요청, 통합신고센터 연결 여부를 기록합니다."],
+      ["05", "소명·해제 재심", "오탐 가능성은 근거 패킷과 사람 승인으로 해제합니다."],
+      ["06", "룰 개선·감사", "탐지 결과, 오탐, 미탐, 피해구제 결과를 룰 개선 로그로 남깁니다."],
+    ],
+    roleCaseTitle: "FDS·보이스피싱 업무 범주",
+    roleCases: [
+      ["기관사칭", "검찰·금감원·은행 사칭과 원격제어 앱 설치 유도 신호를 탐지합니다."],
+      ["대포통장", "입출금 패턴, 분산 출금, 신고 이력으로 의심 계좌를 분류합니다."],
+      ["이상거래", "고액·새벽·신규수취인·기기변경·인증실패 조합을 봅니다."],
+      ["지급정지", "피해 확산 가능성이 높을 때 차단 후보와 법적 절차를 분리합니다."],
+      ["오탐 해제", "정상거래 소명, 영업점 확인, 해제 승인을 기록합니다."],
+      ["룰 운영", "공동룰과 자체룰을 주기적으로 갱신하고 성능을 감시합니다."],
+    ],
+    controlTitle: "긴급 차단과 해제는 감사 로그 필수",
+    controlIcon: "lock",
+    controlLead: "피해 방지 선차단은 빠르게, 해제와 고객 영향 조치는 승인 기반으로 처리합니다.",
+    controlBody: "AI는 의심 신호와 차단 후보를 제안합니다. 지급정지, 해제, 고객 통지는 담당자 승인과 근거 로그를 남긴 뒤 실행됩니다.",
+    controlRows: [
+      ["공동 기준", "금융권 FDS 공동 탐지룰·운영 가이드라인"],
+      ["신고 연결", "112·1332·1566-1188·금융회사 지급정지"],
+      ["감사 기록", "탐지 → 차단 후보 → 승인/해제 → 룰 개선"],
+    ],
+    context: {
+      roleEyebrow: "FDS 역할",
+      roleTitle: "피해 확산을 막고 오탐을 관리하는 담당자",
+      roleRows: [
+        ["핵심 업무", "보이스피싱·대포통장·이상거래·지급정지"],
+        ["AI 역할", "신호 조합·공동룰 적용·오탐 후보 제안"],
+        ["사람 역할", "지급정지·해제·고객 통지 승인"],
+      ],
+      priorityTitle: "FDS 담당자가 먼저 볼 항목",
+      priorities: [
+        ["긴급 차단 후보", "기관사칭·고액이체·원격앱 설치", "4건"],
+        ["오탐 재심", "정상 거래 소명과 해제 승인", "2건"],
+        ["룰 업데이트", "공동룰/자체룰 개선 후보", "6건"],
+      ],
+      referenceTitle: "외부 참고 기준",
+      references: [
+        ["공동룰", "금융권 FDS 공동 탐지룰"],
+        ["피해구제", "경찰 112·금감원 1332·통합신고 1566-1188"],
+        ["절차", "지급정지·채권소멸·피해환급 흐름"],
+      ],
+    },
+  };
+}
+
+function complianceDashboardConfig() {
+  return {
+    title: "내부통제 준법감시 담당자 대시보드",
+    description: "책무구조도, 승인 게이트, 개인정보·가명처리, 감사 로그, 사고보고를 점검하는 역할 전용 화면입니다.",
+    heroEyebrow: "내부통제·준법감시 사이클",
+    heroTitle: "AI 운영의 책임 소재, 승인 근거, 개인정보 통제를 한 화면에서 확인합니다.",
+    heroBody: "금융회사 지배구조법상 내부통제 강화, 책무구조도, 3선 방어 체계, 신용정보·개인정보 보호 요구를 반영해 AI가 제안한 업무가 통제선 안에서 처리되는지 검증합니다.",
+    badges: [
+      { label: "책무구조도", className: "status-new" },
+      { label: "승인 게이트", className: "status-pending" },
+      { label: "감사 무결성", className: "status-approved" },
+    ],
+    kpis: [
+      ["책무 점검", "8건", "업무·임원·부서 책임 매핑 확인", "network"],
+      ["정책 위반", "3건", "가드레일·승인 누락·PII 위험", "alert"],
+      ["감사 샘플", "11건", "해시 체인과 승인 근거 점검", "history"],
+      ["보고 패킷", "2건", "사고보고·개선명령 후보", "file-text"],
+    ],
+    workTitle: "준법감시 업무 큐",
+    work: [
+      {
+        title: "책무구조도 이행 점검",
+        caseId: "case-127",
+        customer: "군산 부품 제조업",
+        detail: "AI 제안, 담당 승인, 본부 심사, 최종 책임자를 책무구조도 관점으로 연결합니다.",
+        status: "점검 대기",
+        skills: ["책무 매핑", "3선 방어", "승인권자"],
+      },
+      {
+        title: "개인정보·가명처리 통제",
+        caseId: "case-104",
+        customer: "전주 중앙로 카페",
+        detail: "외부 모델로 나간 토큰, 원본 PII 격리, 출력 재식별 위험을 샘플링합니다.",
+        status: "위반 후보",
+        skills: ["PII 비반출", "가명처리", "출력필터"],
+      },
+      {
+        title: "승인 로그 무결성 검증",
+        caseId: "case-201",
+        customer: "서울 신축빌라 전세 예정",
+        detail: "승인자, 시간, 근거, 프롬프트/룰 버전, 해시 체인 누락 여부를 점검합니다.",
+        status: "검증 대기",
+        skills: ["해시체인", "승인근거", "룰버전"],
+      },
+      {
+        title: "사고보고·비상정지 리허설",
+        caseId: "case-133",
+        customer: "익산 음식점",
+        detail: "오탐 차단, 부당권유, PII 노출 의심 상황에서 비상정지와 보고 양식을 생성합니다.",
+        status: "상위 검토",
+        skills: ["킬스위치", "사고보고", "개선명령"],
+      },
+    ],
+    flowTitle: "준법감시 처리 흐름",
+    flow: [
+      ["01", "정책·책무 매핑", "업무, 역할, 승인권자, 책임자를 책무구조도에 연결합니다."],
+      ["02", "가드레일 적용 확인", "부당권유, 확정 표현, PII, 외부반출, 승인 누락 규칙을 봅니다."],
+      ["03", "승인 게이트 점검", "고객 영향 조치가 사람 승인 없이 나가지 않았는지 확인합니다."],
+      ["04", "감사 원장 검증", "입력, 산출, 승인자, 시간, 해시, 버전, 근거 링크를 샘플링합니다."],
+      ["05", "예외·위반 조치", "재심, 반려, 격상, 비상정지, 고객 통지 필요 여부를 정합니다."],
+      ["06", "보고·개선", "사고보고, 개선명령, 교육, 정책 업데이트로 후속 조치를 남깁니다."],
+    ],
+    roleCaseTitle: "준법감시 업무 범주",
+    roleCases: [
+      ["책무구조도", "업무별 책임자와 내부통제 관리의무 이행 여부를 확인합니다."],
+      ["승인 게이트", "AI 제안이 고객 영향 조치로 자동 실행되지 않았는지 검증합니다."],
+      ["PII 비반출", "원본 개인정보와 토큰/가명정보 분리, 외부반출 차단을 점검합니다."],
+      ["가드레일", "확정·과장·부당권유·불완전판매 유발 표현을 통제합니다."],
+      ["감사 무결성", "해시 체인, 룰 버전, 승인자, 변경 이력을 샘플링합니다."],
+      ["사고 대응", "킬스위치, 보고 양식, 고객 통지, 법적 보존을 준비합니다."],
+    ],
+    controlTitle: "AI 운영 통제선 밖 자동 실행 금지",
+    controlIcon: "shield",
+    controlLead: "책임자, 승인권자, 감사 근거가 없는 고객 영향 조치는 차단합니다.",
+    controlBody: "AI는 정책 위반 가능성과 누락 로그를 제안합니다. 내부통제 담당자는 근거와 책임 소재를 확인해 승인, 반려, 재심, 비상정지를 결정합니다.",
+    controlRows: [
+      ["법령 참고", "금융회사 지배구조법·신용정보법·개인정보보호법"],
+      ["통제 구조", "1선 업무·2선 준법/리스크·3선 감사"],
+      ["감사 기록", "정책 → 승인 → 실행 → 예외/보고 → 개선"],
+    ],
+    context: {
+      roleEyebrow: "준법감시 역할",
+      roleTitle: "AI 운영의 책임과 통제선을 지키는 담당자",
+      roleRows: [
+        ["핵심 업무", "책무구조도·승인게이트·PII·감사·사고보고"],
+        ["AI 역할", "위반 후보·로그 누락·보고 패킷 제안"],
+        ["사람 역할", "승인·반려·재심·비상정지·개선명령"],
+      ],
+      priorityTitle: "준법감시 담당자가 먼저 볼 항목",
+      priorities: [
+        ["정책 위반 후보", "승인 누락·PII·부당권유 표현", "3건"],
+        ["감사 샘플", "해시 체인과 근거 링크 확인", "11건"],
+        ["책무 매핑", "담당·승인·책임자 연결", "8건"],
+      ],
+      referenceTitle: "외부 참고 기준",
+      references: [
+        ["법령", "금융회사 지배구조법"],
+        ["내부통제", "책무구조도·3선 방어 체계"],
+        ["정보보호", "신용정보법·개인정보보호법·가명처리"],
+      ],
+    },
+  };
+}
+
+function jeonseProtectionDashboardPage() {
+  return roleDashboardPage(jeonseProtectionDashboardConfig());
+}
+
+function consumerProtectionDashboardPage() {
+  return roleDashboardPage(consumerProtectionDashboardConfig());
+}
+
+function fdsDashboardPage() {
+  return roleDashboardPage(fdsDashboardConfig());
+}
+
+function complianceDashboardPage() {
+  return roleDashboardPage(complianceDashboardConfig());
+}
+
+function jeonseProtectionDashboardContextMarkup() {
+  return roleDashboardContextMarkup(jeonseProtectionDashboardConfig());
+}
+
+function consumerProtectionDashboardContextMarkup() {
+  return roleDashboardContextMarkup(consumerProtectionDashboardConfig());
+}
+
+function fdsDashboardContextMarkup() {
+  return roleDashboardContextMarkup(fdsDashboardConfig());
+}
+
+function complianceDashboardContextMarkup() {
+  return roleDashboardContextMarkup(complianceDashboardConfig());
 }
 
 function inboxPage() {
@@ -2695,6 +3878,12 @@ function renderProperties() {
     activity: activityContextMarkup,
     budget: budgetContextMarkup,
     settings: settingsContextMarkup,
+    "rm-dashboard": rmDashboardContextMarkup,
+    "corporate-credit-dashboard": corporateCreditDashboardContextMarkup,
+    "jeonse-protection-dashboard": jeonseProtectionDashboardContextMarkup,
+    "consumer-protection-dashboard": consumerProtectionDashboardContextMarkup,
+    "fds-dashboard": fdsDashboardContextMarkup,
+    "compliance-dashboard": complianceDashboardContextMarkup,
   };
 
   let markup;
@@ -2726,6 +3915,12 @@ function propertyPanelTitle() {
   if (activeDetailType === "agent" && currentAgent()) return agentLabel(currentAgent());
   if (activeDetailType === "skill" && currentSkill()) return skillLabel(currentSkill().slug);
   if (activeDetailType === "feature" && currentFeature()) return currentFeature().title;
+  if (activeDetailType === "view" && activeView === "rm-dashboard") return "RM 역할 대시보드";
+  if (activeDetailType === "view" && activeView === "corporate-credit-dashboard") return "기업여신 담당자 대시보드";
+  if (activeDetailType === "view" && activeView === "jeonse-protection-dashboard") return "전세보호 담당자 대시보드";
+  if (activeDetailType === "view" && activeView === "consumer-protection-dashboard") return "소비자 보호 담당자 대시보드";
+  if (activeDetailType === "view" && activeView === "fds-dashboard") return "보이스피싱/FDS 담당자 대시보드";
+  if (activeDetailType === "view" && activeView === "compliance-dashboard") return "내부통제 준법감시 담당자 대시보드";
   if (activeDetailType === "view") return "선택 화면 요약";
   const item = currentCase();
   return item ? `${item.code} · ${item.customerName}` : "속성";
@@ -3279,6 +4474,70 @@ function settingsContextMarkup() {
       ${propertyRow("외부 연동", "데모 어댑터")}
     </div>`,
   );
+}
+
+function rmDashboardContextMarkup() {
+  return `
+    ${compactPanel(
+      "RM 역할",
+      "상담부터 사후관리까지",
+      `<div class="property-list">
+        ${propertyRow("핵심 업무", "상담·서류·품의·심사 연결·사후관리")}
+        ${propertyRow("AI 역할", "브리핑·누락 탐지·초안·근거 패킷")}
+        ${propertyRow("사람 역할", "조건 제시·예외 판단·고객 영향 승인")}
+      </div>`,
+    )}
+    ${compactPanel(
+      "오늘 우선순위",
+      "RM이 먼저 볼 항목",
+      `<div class="context-list">
+        ${workItem("고위험 상담 브리핑", "상환 압박·금리 민감도·정책금융 후보 확인", "3건")}
+        ${workItem("서류 보완 요청", "사업자·세무·임대차 자료 누락 탐지", "6건")}
+        ${workItem("승인 대기", "고객 안내 전 RM 승인 필요", "2건")}
+      </div>`,
+    )}
+    ${compactPanel(
+      "측정 항목",
+      "파일럿에서 검증할 값",
+      `<div class="property-list">
+        ${propertyRow("케이스/인", "내부 실측 필요")}
+        ${propertyRow("절감 시간", "초안·대조·기록·재작업 분리")}
+        ${propertyRow("승인 채택률", "초안 수정률과 반려 사유 추적")}
+      </div>`,
+    )}
+  `;
+}
+
+function corporateCreditDashboardContextMarkup() {
+  return `
+    ${compactPanel(
+      "기업여신 역할",
+      "심사 가능한 패킷 생성",
+      `<div class="property-list">
+        ${propertyRow("핵심 업무", "상담·자금용도·서류·재무·담보·전결")}
+        ${propertyRow("AI 역할", "누락 탐지·상환 분석·라우팅 제안")}
+        ${propertyRow("사람 역할", "한도·금리·조건·실행 승인")}
+      </div>`,
+    )}
+    ${compactPanel(
+      "오늘 우선순위",
+      "기업여신 담당자가 먼저 볼 항목",
+      `<div class="context-list">
+        ${workItem("전결 초과 후보", "본부 심사/위원회 상정 여부 사전 분기", "3건")}
+        ${workItem("서류 보완 요청", "재무제표·납세·등기·견적 증빙 누락", "5건")}
+        ${workItem("자금용도 점검", "실행 후 증빙 대조와 유용 가능성 확인", "4건")}
+      </div>`,
+    )}
+    ${compactPanel(
+      "CREFIA 반영",
+      "외부 참고 기준",
+      `<div class="property-list">
+        ${propertyRow("법규", "여신전문금융업법·감독규정")}
+        ${propertyRow("자율규제", "기업여신 심사·사후관리, PF, 금리체계")}
+        ${propertyRow("공시", "리스/할부·신용대출·경영공시")}
+      </div>`,
+    )}
+  `;
 }
 
 function renderEvidence() {
@@ -4344,18 +5603,117 @@ function bindActions() {
     }
   });
 
+  const closeRailGroups = (exceptKey = "") => {
+    document.querySelectorAll("[data-rail-group]").forEach((group) => {
+      const key = group.dataset.railGroup;
+      const isOpen = Boolean(exceptKey && key === exceptKey);
+      group.classList.toggle("is-open", isOpen);
+      const toggle = group.querySelector("[data-rail-toggle]");
+      if (toggle) toggle.setAttribute("aria-expanded", String(isOpen));
+    });
+  };
+
+  document.querySelectorAll("[data-rail-toggle]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const key = button.dataset.railToggle;
+      const group = document.querySelector(`[data-rail-group="${key}"]`);
+      const willOpen = !group?.classList.contains("is-open");
+      closeRailGroups(willOpen ? key : "");
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest("[data-rail-group]")) closeRailGroups();
+  });
+
   document.querySelectorAll("[data-affiliate]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
       const next = button.dataset.affiliate;
-      railFilter = railFilter === next ? "all" : next;
+      railFilter = !next || next === "all" || railFilter === next ? "all" : next;
       document.querySelectorAll("[data-affiliate]").forEach((entry) => {
-        entry.classList.toggle("is-active", entry.dataset.affiliate === railFilter);
+        const isAll = railFilter === "all" && entry.dataset.affiliate === "all";
+        entry.classList.toggle("is-active", isAll || entry.dataset.affiliate === railFilter);
       });
       const scoped = visibleCases();
       if (!scoped.some((item) => item.id === selectedCaseId) && scoped.length) {
         selectedCaseId = scoped[0].id;
       }
+      closeRailGroups();
       render();
+    });
+  });
+
+  document.querySelectorAll("[data-role-filter]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      selectedRailRole = button.dataset.roleFilter || "";
+      document.querySelectorAll("[data-role-filter]").forEach((entry) => {
+        entry.classList.toggle("is-active", entry.dataset.roleFilter === selectedRailRole);
+      });
+      closeRailGroups();
+      if (selectedRailRole === "RM") {
+        activeView = "rm-dashboard";
+        activeDetailType = defaultDetailForView(activeView);
+        if (window.location.hash !== "#rm-dashboard") {
+          window.location.hash = "rm-dashboard";
+        }
+        render();
+        notify("RM 역할 대시보드로 이동했습니다.");
+        return;
+      }
+      if (selectedRailRole === "기업여신 담당자") {
+        activeView = "corporate-credit-dashboard";
+        activeDetailType = defaultDetailForView(activeView);
+        if (window.location.hash !== "#corporate-credit-dashboard") {
+          window.location.hash = "corporate-credit-dashboard";
+        }
+        render();
+        notify("기업여신 담당자 대시보드로 이동했습니다.");
+        return;
+      }
+      if (selectedRailRole === "전세보호 담당자") {
+        activeView = "jeonse-protection-dashboard";
+        activeDetailType = defaultDetailForView(activeView);
+        if (window.location.hash !== "#jeonse-protection-dashboard") {
+          window.location.hash = "jeonse-protection-dashboard";
+        }
+        render();
+        notify("전세보호 담당자 대시보드로 이동했습니다.");
+        return;
+      }
+      if (selectedRailRole === "소비자 보호 담당자") {
+        activeView = "consumer-protection-dashboard";
+        activeDetailType = defaultDetailForView(activeView);
+        if (window.location.hash !== "#consumer-protection-dashboard") {
+          window.location.hash = "consumer-protection-dashboard";
+        }
+        render();
+        notify("소비자 보호 담당자 대시보드로 이동했습니다.");
+        return;
+      }
+      if (selectedRailRole === "보이스피싱/FDS 담당자") {
+        activeView = "fds-dashboard";
+        activeDetailType = defaultDetailForView(activeView);
+        if (window.location.hash !== "#fds-dashboard") {
+          window.location.hash = "fds-dashboard";
+        }
+        render();
+        notify("보이스피싱/FDS 담당자 대시보드로 이동했습니다.");
+        return;
+      }
+      if (selectedRailRole === "내부통제 준법감시 담당자") {
+        activeView = "compliance-dashboard";
+        activeDetailType = defaultDetailForView(activeView);
+        if (window.location.hash !== "#compliance-dashboard") {
+          window.location.hash = "compliance-dashboard";
+        }
+        render();
+        notify("내부통제 준법감시 담당자 대시보드로 이동했습니다.");
+        return;
+      }
+      notify(`${selectedRailRole} 유형을 선택했습니다.`);
     });
   });
 
@@ -4476,7 +5834,9 @@ function render() {
 
 function applyHashRoute() {
   const view = window.location.hash.replace("#", "");
-  const known = navigation.flatMap((group) => group.items.map((item) => item.id));
+  const known = navigation
+    .flatMap((group) => group.items.map((item) => item.id))
+    .concat(["rm-dashboard", "corporate-credit-dashboard", "jeonse-protection-dashboard", "consumer-protection-dashboard", "fds-dashboard", "compliance-dashboard"]);
   if (!known.includes(view)) return;
   activeView = view;
   activeDetailType = defaultDetailForView(view);
@@ -4488,6 +5848,7 @@ window.addEventListener("hashchange", () => {
   render();
 });
 
+restoreNavigationOrder();
 bindActions();
 applyHashRoute();
 applyDemoModeFromUrl();
