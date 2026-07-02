@@ -4,7 +4,7 @@ tags:
   - type/moc
   - status/active
 date: 2026-06-26
-up: "[[08_본선/_MOC/_03_제품_MOC|제품 MOC]]"
+up: "[[_03_제품_MOC]]"
 ---
 
 # 제품 문서 인덱스
@@ -45,6 +45,7 @@ up: "[[08_본선/_MOC/_03_제품_MOC|제품 MOC]]"
 - [[08_본선/03_제품/05_diagrams/03_approval-gate|승인 게이트]]
 - [[08_본선/03_제품/05_diagrams/04_erd|ERD]]
 - [[08_본선/03_제품/05_diagrams/99_comprehensive-architecture|종합 아키텍처]]
+- [[_빌드-로드맵-MOC|빌드 로드맵]]
 
 ---
 

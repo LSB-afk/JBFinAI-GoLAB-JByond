@@ -120,6 +120,30 @@ aliases:
 
 **다음**: ① 회의 후속 7건(취지·가치기준·발표내러티브 등) 반영 판단 ② 제품 정의 §1 합의 ③ 구글폼 재확인 ④ 로컬 커밋(푸시 게이트).
 
+### 2026-06-30 · 아이디어 회의 기록 + 제품 정의 팀 합의
+**한 일**
+- 6/30 밤 아이디어 회의 STT → 원문(`04_증빙/04_회의록/_원문/`, gitignore) + 정리본([[회의록-2026-06-30-아이디어회의]]) + [[_회의록-INDEX]] #10·11·12 반영. meeting-intake 스킬 절차 적용.
+- **제품 정의 §1 팀 첫 합의**: JB 2계열사(은행1+JB우리캐피탈) RM 에이전트, 차별점=확장성(단계적 청사진 MVP→전그룹), 시연=로컬모델 실동작·조직도 메인UI·JB 웹 디자인 차용. 14에이전트 리서치 재정합.
+- 반영: [[제품-정의]](인-볼트 컨텍스트)·[[본선-마스터-플레이북]](취지·가치기준·내러티브)·전역 메모리 [[본선-제품정의-확정]] 신규 생성.
+
+**결과물**: 회의록 정리본 1종·원문(레닥션·gitignore)·INDEX 갱신·제품-정의 컨텍스트 갱신·플레이북 반영.
+
+**다음**: INDEX #7(MVP 재설계)·#8(팀 로스터)·#12(상금 대외비)는 🔶팀 확인 후 반영.
+
+### 2026-06-30 · 텔레메트리 누적 중복 버그 수정 + 하네스 견고성 보강 (Codex)
+**한 일**
+- **누적 중복 버그 수정**: Stop 훅이 매 종료마다 트랜스크립트 전체 재파싱 → 세션당 N행 누적 문제. `session_id` 키 upsert(세션당 1행)로 변경, aggregator에 dedup 로직 추가, intake.csv `session_id` 컬럼 추가·레거시 4중복행 정리(~41M→10.4M 정상화). Stop 훅 종료 시 aggregator 자동연쇄 → 통계 4파일 무자각 갱신.
+- **Codex 위임 캡처**: 트랜스크립트의 `subagent_type=codex:*` 감지해 `engine=codex` 별도행 기록(실데이터 ×4 확인).
+- **G1 git기여 자동집계**: `git-contribution.mjs` → `_system/team/_contribution-stats.md` GIT-CONTRIB 블록.
+- **G3 PII 자동스캔**: `pii-scan.mjs` + Stop 훅 2번째 command(항상 exit0, 마스킹 리포트).
+- **G4 원자적 쓰기**: intake.csv·통계파일 tmp+rename(+.bak 1세대).
+- **G5 ai-usage-stats.md**: 완전파생 파일만 gitignore+untrack.
+- 회귀 자체검증 `test-telemetry.mjs`(upsert·cache_read·codex·수동행·합산) 통과.
+
+**결과물**: `session-telemetry.mjs`·`telemetry-aggregator/aggregate.mjs`·`git-contribution.mjs`·`pii-scan.mjs`·`test-telemetry.mjs`·intake.csv·`_contribution-stats.md`·`.gitignore`.
+
+**다음**: G2(커버리지 구멍)·G6(소요 벽시계 왜곡)·G7(viz 정체) 잔여. 다음 세션 `/hooks` Stop 훅 재승인 1회(2개 command로 늘어남).
+
 ### 2026-06-30 · 리서치 딥프롬프트 사이클 (실행 → 마감)
 **한 일**
 - 도메인분해 Opus 2패스 → 딥프롬프트 **27종**(D1a~D19·D+a/b·D3a~f, 형식 A). JB sharp 레이어 D3c·D3d·D3e(총정리본 풀+컴팩트)·D3f(시계열 회사소개).
@@ -132,4 +156,190 @@ aliases:
 
 **다음**: (재개 대기) 추가 결과 회수 → 총정리본(D3e+D3f) **7레이어 조립 + Excalidraw 4종** → 제품 정의·설계 반영.
 
+### 2026-06-30 (후속) · D3e 최종 회수 — JB 총정리본 결과 수령
+- D3e(JB 7레이어 총정리본, **GPT-5.5 xhigh**) Sonnet 위임 회수 → `_결과/D3e-결과-gpt55xhigh.md`(369줄). 이미지=타임라인 차트(수식 아님). D3e·D3f 상호보완(동일 제목·다른 구조, 중복 아님).
+- 로우데이터 축적 점검: 모델·도메인·회차=[[_모델기록]]+intake CSV / 토큰·툴·시간=Stop훅 / 프롬프트 원문=프롬프트-로그. **통계 분석용 raw 준비 완료**.
+- 다음: D3e+D3f+D3a~d 합본 → 7레이어 총정리본 조립 + Excalidraw(재개 시).
+
+### 2026-07-01 · 볼트 태그·부모(up) 전면 정합화
+**한 일**
+- NFC·절대경로·basename·이스케이프파이프 인지 진단(Codex) → Claude 판단 → 수정(Codex, 멱등 스크립트 `backfill-frontmatter.mjs`).
+- up 누락 46건 backfill(`_결과` 42 → `_00-회수현황` 등), 부모 부적합 33건 교정(프롬프트→`README`, `_분석/*`→`_03_제품_MOC`), tags 누락 backfill, `area/general`→`area/product`(paperclip), up 표기 basename 통일(중복명만 경로지정).
+- `_03_제품_MOC`↔`INDEX` 양방향 링크 1건, 죽은링크 `08_본선/HOME`→`본선 HOME` 교정.
+- **Codex 진단 "up 65% 깨짐"·"유령 부모 6+"은 이스케이프파이프 미파싱 측정오류로 판명** → 불필요한 down-link 스팸·area 재태깅 51건 churn 기각(사용자 "경량").
+
+**결과물**: `backfill-frontmatter.mjs`(멱등). 최종: up 누락 0·깨진 부모 0·BFS 프롬프트29·결과44 도달·사이클 0·죽은링크 0.
+
+**다음**: 결과 말단 frontmatter(`up:`) 46건 백필은 사람 승인 후 일괄.
+
+### 2026-07-01 · 운영 자동화 스킬화 (AI 자가인지·자가전파)
+**한 일**
+- **[[canon-moc-sync]] [5/5] 도달성·up 사이클 검증 추가**: 루트→자식 BFS로 고아 자동 검출·연결(신규 스킬 대신 기존 확장). 즉시 고아 `B1` 검출→연결로 가치 실증.
+- **신규 스킬 [[meeting-intake]]**: 회의 STT→원문+회의록+인덱스+메모리+거버넌스 일괄 처리.
+- **[[AGENTS]] §4-A 운영 자동화 규약 신설**: 트리거→스킬 매핑(파일생성→canon-moc-sync, 회의STT→meeting-intake, 체크포인트→harness-sync) — AI가 사용자 지시 없이 자가시행.
+- [[registry-skills]]·[[_tools-index]]·메모리 [[본선-운영-하네스]] 갱신.
+
+**결과물**: `canon-moc-sync/SKILL.md`(확장), `meeting-intake/SKILL.md`(신규), `08_본선/AGENTS.md`(§4-A).
+
+**다음**: 새 파일 생성 시 canon-moc-sync 자동 실행·frontmatter+up 필수 규약 적용.
+
+### 2026-07-01 · 도구셋 확장 리서치 + 문서화
+- 팀 공유 플러그인·스킬 현황 조사(Haiku Explore 위임) → 본선 4대 산출물 갭 식별(로컬모델·조직도·Node백엔드·PII).
+- 직접 웹리서치: NVIDIA **SkillSpector**(WebFetch 공식 README) · **im-not-ai**(WebFetch) · 로컬 한국어 LLM·Cytoscape·한국어 PII(Perplexity ×4).
+- 산출물: [[도구-확장-리서치-20260701]](6종 결정표·설치명령·라이선스·한계), decision-log 1행.
+- 다음: (사람 승인) settings.json enabledPlugins(humanize-korean) · bootstrap SkillSpector 게이트 · registry-cli/plugins 반영(harness-sync) · 시연 EXAONE 7.8B 로컬 셋업.
+
+### 2026-07-01 · 도구셋 확장 적용 + 자체 스킬 2종 신설
+**한 일**
+- 승인 4종 적용: settings.json `humanize-korean@im-not-ai`(+마켓), registry-cli `skillspector` 행 + bootstrap STEP3.5 보안 스캔 게이트, harness-sync 정합, 스코프 커밋 `bbd3203`→origin·fork 푸시. (plugin-inventory 개인환경 혼입분 revert, SSOT=settings.json)
+- 자체 스킬 **2종 신설**(6→8): [[prompt-capture]](프롬프트 분기분류 append, extract-prompts.mjs+`--self-test`) · [[tool-intake]](신규 도구 도입 6단계·SkillSpector 게이트 내장).
+- 스킬맵·거버넌스 전파: registry-skills·AGENTS §4-A(트리거 2)·bootstrap SKILL_DIRS·_tools-index(8종)·메모리(본선-운영-하네스).
+
+**결과물**: `_system/skills/{prompt-capture,tool-intake}/`, [[도구-확장-리서치-20260701]], 프롬프트 로그 T1~T9, decision 2건.
+
+**다음**: 두 스킬 커밋·푸시. 미적용 잔여=EXAONE 7.8B 로컬 셋업(시연), Cytoscape/Hono/PII는 각 워크스트림 착수 시 메모리 트리거로 재제안.
+
+### 2026-07-01 · 시각화 스킬 맵·메모리 갱신
+**한 일**
+- [[visualization-cycle]]을 신규 스킬 생성 없이 확장: `workflow-gap-audit` 후보와 `visual-brief-audit` 기각 항목을 검증 단계에 흡수.
+- 메모리 [[본선-운영-하네스]] 신설: 자체 스킬 9종, `submission-consistency-check` 활성, `visualization-cycle` 강화 검증, 후보/기각 스킬 판정 기록.
+- 스킬맵 전파: [[_tools-index]]·[[AGENTS]]·[[_HARNESS-SYSTEM]]·[[harness-sync]]에 간트 갭·5초 가독성·사람/AI/기여 레이어 검증 문구 반영.
+
+**검증**: `visualization-cycle` quick_validate 및 `run.mjs` 통과. `canon-moc-sync` dry-run 기준 frontmatter·MOC·죽은링크·도달성 정합.
+
+### 2026-07-01 · session-boot 스킬 신설 (세션 오리엔테이션)
+**한 일**
+- [[session-boot]] 신설(자체 9→10종): `boot.mjs` 컴팩트 스냅샷(git·페이즈·마지막 로그·자동스킬·게이트, `--self-test`) + SKILL.md.
+- **자동 호출**: `CLAUDE.md`에 "본선 작업 시작 시 session-boot 먼저 실행" 1줄 추가(매 세션 자동 로드).
+- 전파: registry-skills·AGENTS §4-A(최상단 트리거)·bootstrap SKILL_DIRS·_tools-index(10종)·메모리(본선-운영-하네스).
+
+**결과물**: `_system/skills/session-boot/{SKILL.md,boot.mjs}`, CLAUDE.md, 로그 3종(T10).
+
+**검증**: boot.mjs self-test·실출력 ✓, canon-moc-sync [5/5] ✓.
+**다음**: 커밋·푸시.
+
+### 2026-07-01 · 야간 자율 — 리서치 종합·적대검증·정합감사 (오프라인)
+**한 일** (사용자 취침 중, 외부 API·푸시 0 / 코덱스+Sonnet 3에이전트 병렬)
+- **리서치 7레이어 총정리본 조립**(Sonnet): [[_총정리본-7레이어-검증]] — D3e/D3f+D-시리즈를 그룹개요·지배구조·재무·계열사·규제·리스크·전략 7레이어로 종합, 사실마다 출처링크+신뢰마커(✅검증/🔁교차/⚠️미검증/❗충돌). ❗충돌 6건 병기(주가기준일·PBR·2023 ROE·전북은행 순익·대환 단년·광주은행 NPL).
+- **적대검증**(Codex, 오프라인 삼각검증): [[_적대검증-리포트]] — 다회차/다모델 6세트 + 고위험 3건(재무·법·시장) + 단일소스 22항목 + _canon 충돌/해소후보. 핵심: 그룹 3대 재무·전세사기·보이스피싱·법조문은 _canon 정합 / 고위험=계열사 지표혼용·시장ROI·등기정보광장 한도(웹 재검증 필요).
+- **제출물 정합감사**(submission-consistency-check): [[submission-consistency-report]] — 불일치 15건(고7/중5). 최상위 3: ai-report-final 미작성 · _canon §1 본선 히어로 미갱신(SME 잔존) · live-final-verification 백엔드 전제 오류(현 MVP=정적).
+- **_canon 정합 정리안**(직접수정 X, 제안만): [[_canon-정합-정리안]] — A 승인필요(히어로 프레이밍) / B 제출가드(단일소스 격리) / C 주석보강 / D 변경불필요(정합 확인).
+
+**결과물**: `05_제출/리서치-딥프롬프트/_결과/` 3종 + `05_제출/submission-consistency-report.md`.
+**검증**: canon-moc-sync [5/5] 도달성 ✓(4 신규파일 frontmatter·up 정합). 오프라인 준수(웹 0).
+**다음(사람)**: §1 제품정의 승인 회차에서 본선 히어로 확정 → _canon·하위문서 정렬 / ai-report-final 초안 / 웹 재검증 항목 2차 라우팅.
+
+### 2026-07-01 · 야간 자율 2 — 11블록 채움 + 빌드 WBS + 거시 동기화 (Codex 최대화)
+**한 일** (취침 중 자율, Codex GPT-5.5 high 생성 → Claude 검증 루프)
+- **11블록 캔버스 채움 완료**([[제품정의-캔버스]]): 4 wave Codex 병렬 draft → 검증(격리수치 단정 누출 0·확정값 _canon 정합·링크 실재·히어로 잠정·미결 옵션병기) → 반영. 11셀 + KPI열 + 심사25항목 커버리지 25✅ + 마커 범례. 표 무결(7파이프).
+- **가정·민감도 부록 동반**([[_가정-민감도-부록]]): 시장·ROI·RM비용·TCO·SLA 격리수치를 범위/근거등급으로 격리(블록9/10/11이 참조).
+- **빌드 로드맵(WBS) 트리 신설**([[_빌드-로드맵-MOC]] + P0~P6 7페이즈): 정의→데이터→에이전트→보안→UI(조직도)→통합·로컬모델시연→리허설. 각 목표·세부작업(분류태그)·의존·담당에이전트·산출·근거링크. 잠정 draft. 부모=_03_제품_MOC, INDEX 링크.
+- **거시 동기화**(Codex): [[PLAN]]·[[PROGRESS]] 갱신 + `canon-moc-sync --apply`(frontmatter 백필 D20~23 등·MOC 자동링크). 거버넌스·메모리는 Claude 직접.
+
+**결과물**: 캔버스 채움 + `_가정-민감도-부록.md` + `03_제품/06_build-roadmap/` 8파일 + PLAN/PROGRESS + 거버넌스 3종 + 메모리.
+**검증**: canon-moc-sync **[4/5] 죽은링크 0·[5/5] 도달성 전부·사이클 0**, 캔버스 잔존 0·25✅, npm run test(verify_static) 통과.
+**커밋·푸시**: 명시 승인 → 논리 커밋 3개 + **fork(River-181) push**(브랜치 ui-density-improvements, PR #11 트랙).
+**다음(사람)**: 미결 3종 택1(전북/광주·배포vs로컬·DB) → 캔버스 옵션 확정 · §1 _canon 히어로 갱신([[_canon-정합-정리안]] A1) · 빌드 WBS 실착수.
+
 <!-- 새 세션은 이 줄 아래에 추가 -->
+
+### 2026-07-02 · 백업 위험·협업 인프라 정비 + 회의4/5 준비 + 데일리 시스템 + AI 프로토콜
+**한 일**
+- 백업 위험 진단·보완: `.stversions/`·`*.sync-conflict-*` gitignore(구 `_canon` 사본 유입 방지).
+- [[다음-작업-분해]] — 회의록3 결정 게이트(G1~G7·A1) + READY/BLOCKED 태스크 보드.
+- 회의 4([[회의록-2026-07-03-제품정의확정]])·5([[회의록-2026-07-04-시연기술범위]]) 준비 문서 + [[_회의록-INDEX]] 등재. 다운로드 zip JB 디자인 토큰 확인(#0A31A8·SUIT·radius 8/16).
+- **협업 진단 + 텔레메트리 근본수정**: `session-telemetry.mjs` `cwd`→`CLAUDE_PROJECT_DIR` 앵커, 중첩 `08_본선/…/08_본선/` 트리 4곳(12파일) 제거(데이터 손실 0, 하위폴더 실행 테스트 통과).
+- **데일리 노트 시스템 신설** + 소급 6일치(Codex 4병렬, 06-26~07-01) → [[_daily-INDEX]].
+- **[[AI-협업-맥락관리-프로토콜]] 신설** — 병렬 세션 공존·경로앵커·SSOT·승인게이트 룰북.
+- 거버넌스·메모리·MOC 정합.
+
+**검증**
+- canon-moc-sync 죽은링크 0·도달성 전부·사이클 0. `node --check session-telemetry.mjs` OK. verify_static 영향 없음.
+- 데일리 6종 형식·`.md`누출 0·팩트 정합(06-30 _canon §10 수치 = decision-log 일치).
+
+**결과물**: 커밋 4개(`8a374ab`·`87687d4`·`bfb95bb`·`3b4c27c`·`bac148c`) fork(River-181) 푸시.
+
+**다음(사람)**: 메인 승격 방식 확인 → 회의4/5 실행(게이트 픽) → 정의 §1 확정.
+
+## 2026-07-01 야간 · 리서치 점-점 종합 파이프라인 (Codex gpt-5.5 병렬, A→B→C 완료)
+사용자 취침 중 자율 진행. 40개 독립 결과 → 6 연결노트(Phase A) → 교차 인사이트맵·canon 갱신후보(B) → 본선 논증척추(C). 산출 `_결과/_종합/` 9파일. 가드: 푸시 없음·canon 자동수정 없음(제안만 12건, 승인대기)·휴머나이즈·출처보존. 플랜 [[리서치-점연결-야간종합-플랜]], 기록 R39. 메모리·MEMORY·MOC(02_전략)·회수현황 배선 완료. 함정해결: Bash도구 zsh(→bash 스크립트), 한글 글로브 NFD(→`${code}-*.md`), codex stdin(`< /dev/null`). 병렬 paperclip 레인(R38)과 파일 무충돌. 아침 검토: _인사이트맵→_본선-논증척추→_canon-갱신후보(승인)→커밋·푸시 여부.
+
+### 2026-07-02 · 간트 수정 후 Excalidraw 보드 동기화
+**한 일**
+- [[workflow-gantt-blueprint]] 기준을 갭 감사 권고(G4/G5/G6)에 맞춰 갱신: `제품 결정/범위 확정` 레인 추가, `정적 MVP→백엔드/API 승격` 바 추가, `SME 히어로·조직도 UX`와 `리서치 흡수→제품 결정` 체크포인트 표시.
+- 간트와 함께 움직이는 보드 묶음 정리: [[VISUALIZATION-PLAN]]에 `간트 동기화 묶음` 추가, [[_viz-index]] 설명 갱신.
+- 주변 Excalidraw 보드 의미 동기화: `project-master-timeline`, `urgent-action-map`, `judge-criteria-coverage-map`, `finals-demo-readiness-map`, `team-contribution-role-radar`, `update-control-tower`, `demo-video-storyboard`, `evidence-traceability-board`, `demo-golden-path-state-machine`, `research-to-product-funnel`.
+- [[visualization-cycle]] 검증 스크립트에 `제품 결정`, `API 승격`, `SME`, `Decision Gate` 누락 감지 추가.
+
+**검증**
+- `node 08_본선/_system/skills/visualization-cycle/scripts/run.mjs` 통과 — 20개 `.excalidraw` 재생성·검증.
+- `npm run test` 통과 — `static verification passed`, checked files 34.
+
+**다음**
+- 실제 화면 렌더 수동 QA는 아직 미확인. Obsidian/Excalidraw에서 `workflow-gantt-blueprint`, `research-to-product-funnel`, `evidence-traceability-board` 3개를 우선 시각 확인.
+
+### 2026-07-02 · Excalidraw 공유용 이미지 Export
+**한 일**
+- `08_본선/_system/automation/viz-exporter.mjs` 신설: 원본 Excalidraw 20개를 SVG+PNG로 일괄 export.
+- export 위치: `08_본선/assets/excalidraw/exported-images/20260702/`.
+- 공유 후보 6개를 `_export-index.md`에 표시: `workflow-gantt-blueprint`, `project-master-timeline`, `team-contribution-role-radar`, `research-to-product-funnel`, `evidence-traceability-board`, `demo-video-storyboard`.
+- [[VISUALIZATION-PLAN]], [[_viz-index]], [[SHARE-PACKAGE]]에 export 명령·경로 연결.
+
+**검증**
+- `node 08_본선/_system/automation/viz-exporter.mjs` 통과 — 20개 보드 export.
+- `sips -g pixelWidth -g pixelHeight`로 공유 후보 6개 PNG 해상도 확인.
+- `workflow-gantt-blueprint.png` 직접 시각 확인.
+
+**다음**
+- 발표덱 최종 삽입 전 Obsidian/Excalidraw 네이티브 export와 비교 QA.
+
+### 2026-07-02 · 공유 이미지 손그림풍 재export
+**한 일**
+- `viz-exporter.mjs` 기본 렌더를 깔끔한 SVG 차트풍에서 Excalidraw 손그림풍으로 변경.
+- 사각형·채움 면·선·화살표에 이중 러프 스트로크와 미세 흔들림을 적용.
+- `08_본선/assets/excalidraw/exported-images/20260702/`의 20개 PNG+SVG를 hand-drawn 스타일로 재생성.
+- `_export-index.md`에 `Export style: hand-drawn` 기록.
+
+**검증**
+- `node --check 08_본선/_system/automation/viz-exporter.mjs` 통과.
+- `node 08_본선/_system/automation/viz-exporter.mjs` 통과 — 20개 보드 재export.
+- `workflow-gantt-blueprint.png` 직접 시각 확인.
+
+### 2026-07-02 · GitHub 미리보기용 이미지 README
+**한 일**
+- `viz-exporter.mjs`가 `README.md`를 함께 생성하도록 수정.
+- GitHub가 렌더링하지 못하는 Obsidian `![[...]]` 임베드를 표준 Markdown `![](file.png)` 이미지 링크로 변경.
+- `08_본선/assets/excalidraw/exported-images/20260702/README.md`에 추천 공유 순서와 6개 대표 이미지를 직접 표시.
+
+**검증**
+- `node --check 08_본선/_system/automation/viz-exporter.mjs` 통과.
+- `node 08_본선/_system/automation/viz-exporter.mjs` 통과.
+- `npm run test` 통과.
+- `canon-moc-sync` dry-run 통과: frontmatter·MOC·죽은 링크·도달성 정합.
+
+### 2026-07-02 · 팀 역할/발표 PPT 전략 갱신
+**한 일**
+- 재형 역할을 `데이터·시스템 설계·금융 전략`으로 정정: `member-04`, `_team-roster`, `contribution-ledger.csv`, `_contribution-stats` 반영.
+- `workflow-gantt-blueprint`, `team-contribution-role-radar`, `ax-operating-system-map` 재생성: 재형을 DB/API·데이터 모델·시스템 구조 검토 담당으로 표시.
+- `발표-PPT-전략-스토리보드.md` 신설: 본선 확정 전 PPT 전략 SSOT, 12장 슬라이드 스토리보드, 6분 컷, 회의 4·5 확정 게이트 기록.
+- `VISUALIZATION-PLAN`, `_viz-index`, `_05_제출_MOC`에 새 발표 전략 문서와 시각화 입력 관계 연결.
+
+**검증**
+- `node --check 08_본선/_system/automation/viz-generator.mjs` 통과.
+- `node 08_본선/_system/automation/viz-generator.mjs` 통과 — 20개 보드 재생성.
+- `node 08_본선/_system/skills/visualization-cycle/scripts/run.mjs` 통과 — 20개 Excalidraw 검증.
+- `node 08_본선/_system/automation/viz-exporter.mjs` 통과 — 공유 PNG/SVG 재export.
+
+## 2026-07-02 · JB 도입시나리오 설득패키지(PPT 백본) 착수
+- PM 고민(설득 준비 미흡) → 재프레이밍: 리서치 부족 아님, "임원 언어 조립" 부재. 회의록(6/30·회의4·5)+P1·P3·논증척추 확인.
+- 산출: [[JB-도입시나리오-설득패키지]] — 레인+레이어 핵심슬라이드, 외부/공공데이터 3레인 안전반입표, 보안 리스크→통제→증거표, 모델주권(로컬우선), 히어로1풀리얼 빌드청사진, 확장 4단계, 경제성, 시장분석 갭.
+- 잠정 결정: 계열사=전북 히어로 / 구동=하이브리드 실동작 / 히어로 도메인=보이스피싱 / 연동=혼합(히어로 실API). 모두 회의4·5 게이트 확정 대기.
+- 로컬모델 추천(M4 Pro): EXAONE 3.5 7.8B(한국어) / Qwen2.5-14B(툴콜) · Ollama or MLX.
+- ⚠️ 크루프트 재확인: 04_증빙/01_핵심로그/08_본선/ 중첩 디렉토리 여전(상대경로 쓰기 사고) — 커밋 제외 대상.
+
+### 2026-07-02 · paperclip fork 시각검증 실험 (Codex 병렬)
+- **⚠️ 협업 공지**: `~/Downloads/archives/paperclip-jb-fork/`(볼트 밖·비커밋)는 **시각 확인용 레퍼런스 실험**. **최종 제품 아님** — 실제 구현은 다른 팀원 담당. 다른 에이전트는 이 fork를 프로덕션으로 취급 말 것. 근거·재개법: [[레퍼런스]] "paperclip fork 실험" 절.
+- 한 일: (A)paperclip 실제 설치·부팅·**영속 실측** → JB 실토큰 리스킨(#0A31A8·SUIT·8px) → 도메인 개조(Sidebar 한글화·3계열사·[[nemotron-personas-korea]] 합성페르소나 9 Case). Codex 최대 4병렬(하위에이전트 활용)로 앱 자체 테스트·데이터 확장 진행.
+- 결과물: [[paperclip-런타임-데이터흐름]](루프1~3 실측)·[[nemotron-personas-korea]](재사용 데이터셋). 서버 `localhost:3100` 가동.
+- 격리: JBproject 볼트 무영향(verify_static 34 green). 볼트 신규=학습문서 1개(텍스트).
+- 다음: Codex 병렬 결과 회수 → 시각 갤러리 캡처. 제품 채택 여부는 제품정의 확정 후(사람).
