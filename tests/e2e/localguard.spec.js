@@ -320,7 +320,7 @@ test("hero strategy: slogan, demo CTAs, live/roadmap badges, group expansion nod
   await expect(page.locator(".hero-demo-actions")).toContainText("확장 로드맵");
   await expect(page.locator(".expansion-panel")).toContainText("전북은행 · Hero 실동작");
   await expect(page.locator(".expansion-panel")).toContainText("JB우리캐피탈 · 그룹 확장성 증명");
-  await expect(page.locator(".expansion-panel")).toContainText("광주은행 · 로드맵 노드");
+  await expect(page.locator(".expansion-panel")).not.toContainText("광주은행");
   await expect(page.locator("#metric-grid")).toContainText("전세 안심 점검 · 로드맵");
   await saveShot(page, "hero-strategy-home.png");
 

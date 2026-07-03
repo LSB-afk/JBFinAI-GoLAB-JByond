@@ -51,7 +51,7 @@ const evidence = [
     source: "JB금융그룹",
     url: "https://www.jbfg.com/ko/about/network.do",
     implication:
-      "전북은행, 광주은행, JB우리캐피탈을 중심으로 지역 고객과 금융 사후관리 접점이 있다.",
+      "전북은행과 JB우리캐피탈을 중심으로 지역 고객과 금융 사후관리 접점이 있다.",
   },
   {
     id: "smallbiz-burden",
@@ -481,7 +481,7 @@ const initialCases = [
     id: "gwangju-wholesale",
     code: "JBG-118",
     customerName: "광주 송정 도소매",
-    affiliate: "광주은행",
+    affiliate: "전북은행",
     segment: "개인사업자",
     region: "광주 광산구",
     industry: "도소매",
@@ -1234,9 +1234,7 @@ function counts() {
     "rm-dashboard": 8,
     "corporate-credit-dashboard": 8,
     "jeonse-protection-dashboard": 8,
-    "consumer-protection-dashboard": 8,
     "fds-dashboard": 8,
-    "compliance-dashboard": 8,
     "jb-woori-capital-dashboard": 8,
   };
 }
@@ -1516,9 +1514,7 @@ function defaultDetailForView(view) {
     "rm-dashboard",
     "corporate-credit-dashboard",
     "jeonse-protection-dashboard",
-    "consumer-protection-dashboard",
     "fds-dashboard",
-    "compliance-dashboard",
     "jb-woori-capital-dashboard",
   ];
   if (summaryViews.includes(view)) return "view";
@@ -1726,9 +1722,7 @@ function renderWorkbench() {
     "rm-dashboard": rmDashboardPage,
     "corporate-credit-dashboard": corporateCreditDashboardPage,
     "jeonse-protection-dashboard": jeonseProtectionDashboardPage,
-    "consumer-protection-dashboard": consumerProtectionDashboardPage,
     "fds-dashboard": fdsDashboardPage,
-    "compliance-dashboard": complianceDashboardPage,
     "jb-woori-capital-dashboard": jbWooriCapitalDashboardPage,
     "case-detail": () => caseDetailPage(currentCase()),
   };
@@ -1897,9 +1891,7 @@ function commandMarkup() {
 function latestWorkSummaryView() {
   const roles = [
     ["기업여신", "AI 3개 · 업무 기능 5개", "서류·재무분석, 전결 라우팅, 자금용도 사후점검", "#corporate-credit-dashboard"],
-    ["소비자 보호", "AI 4개 · 업무 기능 7개", "적합성·적정성, 부당권유, 민원, 취약고객 보호", "#consumer-protection-dashboard"],
     ["FDS/보이스피싱", "AI 3개 · 업무 기능 6개", "이상징후, 지급정지·해제, 탐지룰 운영", "#fds-dashboard"],
-    ["준법감시", "AI 4개 · 업무 기능 9개", "책무구조도, 데이터 경계, 감사 무결성, 사고대응", "#compliance-dashboard"],
   ];
   return `
     <div class="latest-work">
@@ -2015,7 +2007,6 @@ function groupExpansionView() {
     <div class="work-list">
       ${workItem("전북은행 · Hero 실동작", "여신(소상공인·SME)과 보이스피싱 차단이 끝까지 클릭 가능한 실동작으로 제공됩니다.", "실동작")}
       ${workItem("JB우리캐피탈 · 그룹 확장성 증명", "동일한 운영 패턴(접수→분류→에이전트→사람 승인→감사)을 전용 하네스로 분리 확장했습니다.", "전용 하네스")}
-      ${workItem("광주은행 · 로드맵 노드", "조직도/로드맵 확장 노드로만 표현하며 실동작 구현은 다음 단계입니다.", "로드맵")}
     </div>
     <a class="secondary-button expansion-link" href="#/jb-woori-capital/board">JB우리캐피탈 운영 포털 열기</a>
   `;
@@ -2644,110 +2635,6 @@ function jeonseProtectionDashboardConfig() {
   };
 }
 
-function consumerProtectionDashboardConfig() {
-  return {
-    title: "소비자 보호 담당자 대시보드",
-    description: "적합성·적정성, 설명의무, 부당권유, 민원·분쟁, 취약고객 보호를 한 화면에서 처리하는 역할 전용 화면입니다.",
-    heroEyebrow: "금융소비자 보호 업무 사이클",
-    heroTitle: "AI는 위험 문구와 누락 설명을 찾아주고, 보호 조치는 사람이 최종 확인합니다.",
-    heroBody: "금융소비자보호법상 적합성·적정성 원칙, 불완전판매 예방, 소비자보호 조직 독립성, 민원 대응 흐름을 반영해 고객에게 나가기 전 문구와 근거를 검토합니다.",
-    badges: [
-      { label: "적합성 점검", className: "status-new" },
-      { label: "부당권유 차단", className: "status-escalated" },
-      { label: "민원 SLA", className: "status-pending" },
-    ],
-    kpis: [
-      ["고위험 권유", "6건", "최종 확인·과장·오인 표현 검토", "alert"],
-      ["설명의무 보완", "4건", "위험·수수료·중도해지 설명 누락", "file-text"],
-      ["민원 SLA", "3건", "답변 초안과 근거 보강 필요", "history"],
-      ["취약고객", "5건", "고령·디지털 취약 고객 안내 강화", "users"],
-    ],
-    workTitle: "소비자보호 업무 큐",
-    work: [
-      {
-        title: "적합성·적정성 재점검",
-        caseId: "case-104",
-        customer: "전주 중앙로 카페",
-        detail: "상담 기록과 상품 특성을 대조해 부적합·부적정 가능성과 고객 확인 문구를 정리합니다.",
-        status: "검토 대기",
-        skills: ["적합성", "적정성", "고객속성"],
-      },
-      {
-        title: "부당권유 문구 차단",
-        caseId: "case-118",
-        customer: "광주 송정 도소매",
-        detail: "최종 확인 수익, 손실 축소, 대출 유도성 표현을 고객 안내 전 담당자 승인 절차로 올립니다.",
-        status: "위반 후보",
-        skills: ["표현 점검", "광고심의", "금지문구"],
-      },
-      {
-        title: "민원 답변 근거 패킷",
-        caseId: "case-133",
-        customer: "익산 음식점",
-        detail: "민원 요지, 상담 이력, 약관·설명서 근거, 보완 조치 후보를 답변 초안으로 묶습니다.",
-        status: "보완 요청",
-        skills: ["민원 분류", "근거 패킷", "답변 초안"],
-      },
-      {
-        title: "취약고객 안내 강화",
-        caseId: "case-201",
-        customer: "서울 전세대출 고객",
-        detail: "고령·사회초년생·디지털 취약 고객에게 필요한 추가 설명과 재확인 절차를 표시합니다.",
-        status: "승인 대기",
-        skills: ["취약고객", "쉬운 문구", "재확인"],
-      },
-    ],
-    flowTitle: "소비자보호 처리 흐름",
-    flow: [
-      ["01", "고객 속성 확인", "투자성향, 상환능력, 취약고객 여부, 기존 상담 기록을 확인합니다."],
-      ["02", "상품·권유 적합성 점검", "상품 위험과 고객 상황이 맞는지 부적합 후보를 표시합니다."],
-      ["03", "설명·고지 누락 탐지", "위험, 수수료, 중도해지, 대체상품, 불이익 설명 누락을 찾습니다."],
-      ["04", "부당권유 표현 차단", "최종 확인·과장·오인·불완전판매 유발 문구를 승인 전 차단합니다."],
-      ["05", "민원·분쟁 답변", "근거, 녹취/메모, 조치 계획을 묶어 답변 초안을 만듭니다."],
-      ["06", "개선 요구·교육", "반복 위반 유형은 영업점·상품·프로세스 개선으로 넘깁니다."],
-    ],
-    roleCaseTitle: "소비자보호 업무 범주",
-    roleCases: [
-      ["적합성·적정성", "고객 상황에 맞지 않는 상품 권유 가능성을 사전 점검합니다."],
-      ["설명의무", "위험·비용·불이익·대안 설명 누락을 찾아 담당자에게 보완 요청합니다."],
-      ["부당권유", "최종 확인 수익, 손실 축소, 대출 강요성 표현을 차단합니다."],
-      ["민원·분쟁", "민원 요지, 근거 자료, 답변 초안, 후속 조치를 연결합니다."],
-      ["취약고객 보호", "고령자, 사회초년생, 디지털 취약 고객에게 쉬운 안내와 재확인을 붙입니다."],
-      ["내부 개선", "반복 민원과 위반 문구를 교육·정책·상품 개선 과제로 전환합니다."],
-    ],
-    controlTitle: "소비자 보호 승인 전 고객 발송 금지",
-    controlIcon: "shield",
-    controlLead: "고객 안내문, 민원 답변, 권유 문구는 보호 담당자 승인 뒤에만 나갑니다.",
-    controlBody: "AI는 위험 문구와 설명 누락을 찾아 보완안을 제안합니다. 고객에게 권리·비용·혜택을 최종 확인하는 표현은 보호 담당자가 근거를 확인한 뒤 발송됩니다.",
-    controlRows: [
-      ["법령 참고", "금융소비자보호법·적합성/적정성 원칙"],
-      ["통제 대상", "광고·권유·설명서·민원 답변"],
-      ["감사 기록", "탐지 문구 → 보완 → 승인 → 고객 발송"],
-    ],
-    context: {
-      roleEyebrow: "소비자보호 역할",
-      roleTitle: "고객 오해와 불완전판매를 줄이는 담당자",
-      roleRows: [
-        ["핵심 업무", "적합성·설명의무·부당권유·민원·취약고객"],
-        ["AI 역할", "위험 문구 탐지·근거 패킷·답변 초안 제안"],
-        ["사람 역할", "고객 발송 승인·보상/개선 검토"],
-      ],
-      priorityTitle: "소비자보호 담당자가 먼저 볼 항목",
-      priorities: [
-        ["고위험 권유 문구", "최종 확인·과장·오인 가능 문구", "6건"],
-        ["설명의무 누락", "위험·비용·해지 설명 보완", "4건"],
-        ["민원 SLA", "답변 마감과 근거 보강 필요", "3건"],
-      ],
-      referenceTitle: "외부 참고 기준",
-      references: [
-        ["법령", "금융소비자보호법"],
-        ["감독 방향", "불완전판매 예방·소비자보호 조직 강화"],
-        ["내부 통제", "권유 문구·설명서·민원 답변 승인 로그"],
-      ],
-    },
-  };
-}
-
 function fdsDashboardConfig() {
   return {
     title: "보이스피싱/FDS 담당자 대시보드",
@@ -2852,140 +2739,20 @@ function fdsDashboardConfig() {
   };
 }
 
-function complianceDashboardConfig() {
-  return {
-    title: "내부통제 준법감시 담당자 대시보드",
-    description: "책무구조도, 담당자 승인 절차, 개인정보·가명처리, 감사 로그, 사고보고를 점검하는 역할 전용 화면입니다.",
-    heroEyebrow: "내부통제·준법감시 사이클",
-    heroTitle: "AI 운영의 책임 소재, 승인 근거, 개인정보 통제를 한 화면에서 확인합니다.",
-    heroBody: "금융회사 지배구조법상 내부통제 강화, 책무구조도, 3선 방어 체계, 신용정보·개인정보 보호 요구를 반영해 AI가 제안한 업무가 통제선 안에서 처리되는지 검증합니다.",
-    badges: [
-      { label: "책무구조도", className: "status-new" },
-      { label: "담당자 승인 절차", className: "status-pending" },
-      { label: "감사 무결성", className: "status-approved" },
-    ],
-    kpis: [
-      ["책무 점검", "8건", "업무·임원·부서 책임 매핑 확인", "network"],
-      ["정책 위반", "3건", "가드레일·승인 누락·개인정보 위험", "alert"],
-      ["감사 샘플", "11건", "해시 체인과 승인 근거 점검", "history"],
-      ["보고 패킷", "2건", "사고보고·개선명령 후보", "file-text"],
-    ],
-    workTitle: "준법감시 업무 큐",
-    work: [
-      {
-        title: "책무구조도 이행 점검",
-        caseId: "case-127",
-        customer: "군산 부품 제조업",
-        detail: "AI 제안, 담당 승인, 본부 심사, 최종 책임자를 책무구조도 관점으로 연결합니다.",
-        status: "점검 대기",
-        skills: ["책무 매핑", "3선 방어", "승인권자"],
-      },
-      {
-        title: "개인정보·가명처리 통제",
-        caseId: "case-104",
-        customer: "전주 중앙로 카페",
-        detail: "외부 분석 환경으로 나간 비식별 데이터, 식별정보 원문 격리, 출력 재식별 가능성을 샘플링합니다.",
-        status: "위반 후보",
-        skills: ["개인정보 비반출", "가명처리", "출력필터"],
-      },
-      {
-        title: "승인 로그 무결성 검증",
-        caseId: "case-201",
-        customer: "서울 신축빌라 전세 예정",
-        detail: "승인자, 시간, 근거, 프롬프트/룰 버전, 해시 체인 누락 여부를 점검합니다.",
-        status: "검증 대기",
-        skills: ["해시체인", "승인근거", "룰버전"],
-      },
-      {
-        title: "사고보고·비상정지 리허설",
-        caseId: "case-133",
-        customer: "익산 음식점",
-        detail: "오탐 차단, 부당권유, 개인정보 노출 의심 상황에서 비상정지와 보고 양식을 생성합니다.",
-        status: "상위 검토",
-        skills: ["킬스위치", "사고보고", "개선명령"],
-      },
-    ],
-    flowTitle: "준법감시 처리 흐름",
-    flow: [
-      ["01", "정책·책무 매핑", "업무, 역할, 승인권자, 책임자를 책무구조도에 연결합니다."],
-      ["02", "가드레일 적용 확인", "부당권유, 최종 확인 표현, 개인정보, 외부반출, 승인 누락 규칙을 봅니다."],
-      ["03", "담당자 승인 절차 점검", "고객 영향 조치가 담당자 최종 확인 없이 나가지 않았는지 확인합니다."],
-      ["04", "감사 원장 검증", "입력, 산출, 승인자, 시간, 해시, 버전, 근거 링크를 샘플링합니다."],
-      ["05", "예외·위반 조치", "재심, 수정 요청, 격상, 비상정지, 고객 통지 필요 여부를 정합니다."],
-      ["06", "보고·개선", "사고보고, 개선명령, 교육, 정책 업데이트로 후속 조치를 남깁니다."],
-    ],
-    roleCaseTitle: "준법감시 업무 범주",
-    roleCases: [
-      ["책무구조도", "업무별 책임자와 내부통제 관리의무 이행 여부를 확인합니다."],
-      ["담당자 승인 절차", "AI 제안이 고객 영향 조치로 자동 실행되지 않았는지 검증합니다."],
-      ["개인정보 비반출", "원본 개인정보와 토큰/가명정보 분리, 외부반출 차단을 점검합니다."],
-      ["가드레일", "최종 확인·과장·부당권유·불완전판매 유발 표현을 통제합니다."],
-      ["감사 무결성", "해시 체인, 룰 버전, 승인자, 변경 이력을 샘플링합니다."],
-      ["사고 대응", "킬스위치, 보고 양식, 고객 통지, 법적 보존을 준비합니다."],
-    ],
-    controlTitle: "AI 운영 통제선 밖 자동 실행 금지",
-    controlIcon: "shield",
-    controlLead: "책임자, 승인권자, 감사 근거가 없는 고객 영향 조치는 차단합니다.",
-    controlBody: "AI는 정책 위반 가능성과 누락 로그를 제안합니다. 내부통제 담당자는 근거와 책임 소재를 확인해 승인, 수정 요청, 재심, 비상정지를 결정합니다.",
-    controlRows: [
-      ["법령 참고", "금융회사 지배구조법·신용정보법·개인정보보호법"],
-      ["통제 구조", "1선 업무·2선 준법/리스크·3선 감사"],
-      ["감사 기록", "정책 → 승인 → 실행 → 예외/보고 → 개선"],
-    ],
-    context: {
-      roleEyebrow: "준법감시 역할",
-      roleTitle: "AI 운영의 책임과 통제선을 지키는 담당자",
-      roleRows: [
-        ["핵심 업무", "책무구조도·승인게이트·개인정보·감사·사고보고"],
-        ["AI 역할", "위반 후보·로그 누락·보고 패킷 제안"],
-        ["사람 역할", "승인·수정 요청·재심·비상정지·개선명령"],
-      ],
-      priorityTitle: "준법감시 담당자가 먼저 볼 항목",
-      priorities: [
-        ["정책 위반 후보", "승인 누락·개인정보·부당권유 표현", "3건"],
-        ["감사 샘플", "해시 체인과 근거 링크 확인", "11건"],
-        ["책무 매핑", "담당·승인·책임자 연결", "8건"],
-      ],
-      referenceTitle: "외부 참고 기준",
-      references: [
-        ["법령", "금융회사 지배구조법"],
-        ["내부통제", "책무구조도·3선 방어 체계"],
-        ["정보보호", "신용정보법·개인정보보호법·가명처리"],
-      ],
-    },
-  };
-}
-
 function jeonseProtectionDashboardPage() {
   return roleDashboardPage(jeonseProtectionDashboardConfig());
-}
-
-function consumerProtectionDashboardPage() {
-  return roleDashboardPage(consumerProtectionDashboardConfig());
 }
 
 function fdsDashboardPage() {
   return roleDashboardPage(fdsDashboardConfig());
 }
 
-function complianceDashboardPage() {
-  return roleDashboardPage(complianceDashboardConfig());
-}
-
 function jeonseProtectionDashboardContextMarkup() {
   return roleDashboardContextMarkup(jeonseProtectionDashboardConfig());
 }
 
-function consumerProtectionDashboardContextMarkup() {
-  return roleDashboardContextMarkup(consumerProtectionDashboardConfig());
-}
-
 function fdsDashboardContextMarkup() {
   return roleDashboardContextMarkup(fdsDashboardConfig());
-}
-
-function complianceDashboardContextMarkup() {
-  return roleDashboardContextMarkup(complianceDashboardConfig());
 }
 
 function jbWooriCapitalDashboardPage() {
@@ -3988,7 +3755,7 @@ function budgetView() {
 function settingsView() {
   return `
     <div class="work-grid">
-      ${workItem("조직 프로필", "전북은행 · 광주은행 · JB우리캐피탈 데모 조직을 전환합니다.", "로컬 신뢰")}
+      ${workItem("조직 프로필", "전북은행 · JB우리캐피탈 데모 조직을 전환합니다.", "로컬 신뢰")}
       ${workItem("승인 정책", "L0-L4 자동화 레벨과 금지 자동 실행 항목을 관리합니다.", "필수 통제")}
       ${workItem("외부 연동", "뉴스, 공식자료, RM 상담 기록, 보안 경보 어댑터를 연결합니다.", "데모 연동")}
       <article class="work-item settings-action-card">
@@ -4034,9 +3801,7 @@ function renderProperties() {
     "rm-dashboard": rmDashboardContextMarkup,
     "corporate-credit-dashboard": corporateCreditDashboardContextMarkup,
     "jeonse-protection-dashboard": jeonseProtectionDashboardContextMarkup,
-    "consumer-protection-dashboard": consumerProtectionDashboardContextMarkup,
     "fds-dashboard": fdsDashboardContextMarkup,
-    "compliance-dashboard": complianceDashboardContextMarkup,
     "jb-woori-capital-dashboard": jbWooriCapitalDashboardContextMarkup,
   };
 
@@ -4072,9 +3837,7 @@ function propertyPanelTitle() {
   if (activeDetailType === "view" && activeView === "rm-dashboard") return "RM 역할 대시보드";
   if (activeDetailType === "view" && activeView === "corporate-credit-dashboard") return "기업여신 담당자 대시보드";
   if (activeDetailType === "view" && activeView === "jeonse-protection-dashboard") return "전세보호 담당자 대시보드";
-  if (activeDetailType === "view" && activeView === "consumer-protection-dashboard") return "소비자 보호 담당자 대시보드";
   if (activeDetailType === "view" && activeView === "fds-dashboard") return "보이스피싱/FDS 담당자 대시보드";
-  if (activeDetailType === "view" && activeView === "compliance-dashboard") return "내부통제 준법감시 담당자 대시보드";
   if (activeDetailType === "view") return "선택 화면 요약";
   const item = currentCase();
   return item ? `${item.code} · ${item.customerName}` : "속성";
@@ -4623,7 +4386,7 @@ function settingsContextMarkup() {
     "설정",
     "운영 정책",
     `<div class="property-list">
-      ${propertyRow("조직", "전북은행 · 광주은행 · JB우리캐피탈")}
+      ${propertyRow("조직", "전북은행 · JB우리캐피탈")}
       ${propertyRow("승인", "L0-L4 담당자 승인 절차")}
       ${propertyRow("외부 연동", "데모 어댑터")}
     </div>`,
@@ -5298,7 +5061,6 @@ function renderModal() {
             <span>계열사</span>
             <select name="affiliate">
               <option>전북은행</option>
-              <option>광주은행</option>
               <option>JB우리캐피탈</option>
             </select>
           </label>
@@ -5853,16 +5615,6 @@ function bindActions() {
         notify("전세보호 담당자 대시보드로 이동했습니다.");
         return;
       }
-      if (selectedRailRole === "소비자 보호 담당자") {
-        activeView = "consumer-protection-dashboard";
-        activeDetailType = defaultDetailForView(activeView);
-        if (window.location.hash !== "#consumer-protection-dashboard") {
-          window.location.hash = "consumer-protection-dashboard";
-        }
-        render();
-        notify("소비자 보호 담당자 대시보드로 이동했습니다.");
-        return;
-      }
       if (selectedRailRole === "보이스피싱/FDS 담당자") {
         activeView = "fds-dashboard";
         activeDetailType = defaultDetailForView(activeView);
@@ -5871,16 +5623,6 @@ function bindActions() {
         }
         render();
         notify("보이스피싱/FDS 담당자 대시보드로 이동했습니다.");
-        return;
-      }
-      if (selectedRailRole === "내부통제 준법감시 담당자") {
-        activeView = "compliance-dashboard";
-        activeDetailType = defaultDetailForView(activeView);
-        if (window.location.hash !== "#compliance-dashboard") {
-          window.location.hash = "compliance-dashboard";
-        }
-        render();
-        notify("내부통제 준법감시 담당자 대시보드로 이동했습니다.");
         return;
       }
       notify(`${selectedRailRole} 유형을 선택했습니다.`);
@@ -6017,7 +5759,7 @@ function applyHashRoute() {
   const view = window.location.hash.replace("#", "");
   const known = navigation
     .flatMap((group) => group.items.map((item) => item.id))
-    .concat(["rm-dashboard", "corporate-credit-dashboard", "jeonse-protection-dashboard", "consumer-protection-dashboard", "fds-dashboard", "compliance-dashboard", "jb-woori-capital-dashboard"]);
+    .concat(["rm-dashboard", "corporate-credit-dashboard", "jeonse-protection-dashboard", "fds-dashboard", "jb-woori-capital-dashboard"]);
   if (!known.includes(view)) return;
   activeView = view;
   activeDetailType = defaultDetailForView(view);
