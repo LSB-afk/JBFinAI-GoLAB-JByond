@@ -24,12 +24,31 @@ function jpoHarnessView() {
         <p><strong>하네스 자체 검증</strong> ${jpoState.selfTest.pass ? '<span class="status-pill status-approved">통과</span>' : '<span class="status-pill status-escalated">실패</span>'} <span class="jbwc-row-note">${escapeHtml(jpoState.selfTest.at || "")}</span></p>
         ${jpoState.selfTest.results.map((r) => `<p>${r.ok ? "✅" : "❌"} ${escapeHtml(r.name)}${r.issues && r.issues.length ? ` — ${escapeHtml(r.issues.join(" / "))}` : ""}</p>`).join("")}
       </div>` : ""}`)
-    + jpoPanel(`에이전트 (${agents.length})`, `<div class="jbwc-grid">${agents.map((agent) => {
-      const reg = registry[agent.id] || {};
-      return `<article class="jbwc-card jbwc-agent-card"><header><strong>${escapeHtml(agent.name)}</strong>${jpoStatusPill(agent.status)}</header>
-        <p class="jbwc-meta">${escapeHtml(agent.description)}</p>
-        <p class="jbwc-meta">도메인 ${escapeHtml(agent.domain)} · 금지 ${escapeHtml((reg.blockedActions || [])[0] || "확정 판단 금지")}</p></article>`;
-    }).join("")}</div>`)
+    + (() => {
+      const surface = agents.filter((agent) => JPO_SURFACE_AGENT_IDS.includes(agent.id));
+      const internal = agents.filter((agent) => !JPO_SURFACE_AGENT_IDS.includes(agent.id));
+      const card = (agent) => {
+        const reg = registry[agent.id] || {};
+        return `<article class="jbwc-card jbwc-agent-card"><header><strong>${escapeHtml(agent.name)}</strong>${jpoStatusPill(agent.status)}</header>
+          <p class="jbwc-meta">${escapeHtml(agent.description)}</p>
+          <p class="jbwc-meta">도메인 ${escapeHtml(agent.domain)} · 금지 ${escapeHtml((reg.blockedActions || [])[0] || "확정 판단 금지")}</p></article>`;
+      };
+      const activeByCase = {};
+      jpoTable("jeonse_agent_runs", JPO_ROLE_KEY).forEach((run) => {
+        if (!run.caseId) return;
+        activeByCase[run.caseId] = activeByCase[run.caseId] || new Set();
+        activeByCase[run.caseId].add(run.agentId);
+      });
+      const activeRows = Object.entries(activeByCase).slice(0, 6).map(([caseId, ids]) => `
+        <li class="jbwc-row"><span class="jbwc-row-id">${escapeHtml(caseId)}</span>
+          <span>${[...ids].slice(0, 5).map((id) => escapeHtml((registry[id] || {}).displayName || id)).join(" · ")}</span>
+          <span class="jbwc-row-note">활성 ${ids.size}개</span><span></span></li>`).join("");
+      return jpoPanel(`표면 에이전트 (${surface.length}) — 시연 시 케이스당 3~5개 활성`, `<div class="jbwc-grid">${surface.map(card).join("")}</div>`)
+        + jpoPanel(`내부 전문 조직 (registry ${agents.length}개 중 비표면 ${internal.length})`, `
+          <details class="jpo-internal-agents"><summary class="jbwc-meta">내부 에이전트 펼치기 — 표면 메뉴는 5~6개, registry는 10개 유지</summary>
+          <div class="jbwc-grid">${internal.map(card).join("")}</div></details>`)
+        + jpoPanel("케이스별 활성 에이전트", `<ul class="jbwc-list">${activeRows || '<li class="jbwc-row"><span>실행 기록 없음</span></li>'}</ul>`);
+    })()
     + jpoPanel(`업무 기능 단위 (Skills · ${skills.length})`, `<div class="jbwc-grid">${skills.map((skill) => `
       <article class="jbwc-card"><header><strong>${escapeHtml(skill.label)}</strong><span class="status-pill status-new">${escapeHtml(skill.key)}</span></header>
       <p class="jbwc-meta">담당 에이전트: ${escapeHtml(skill.agentIds.map((id) => (registry[id] || {}).displayName || id).join(", "))}</p>

@@ -22,6 +22,8 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => window.localStorage.removeItem("jbwc-ops-db-v3"));
   await page.addInitScript(() => window.localStorage.removeItem("jpo-ops-db-v1"));
   await page.addInitScript(() => window.localStorage.removeItem("jpo-ops-db-v2"));
+  await page.addInitScript(() => window.localStorage.removeItem("ccl-ops-db-v1"));
+  await page.addInitScript(() => window.localStorage.removeItem("fdr-ops-db-v1"));
 });
 
 test("역할 진입: 전용 사이드바/메뉴이며 generic·무관 샘플이 보이지 않는다", async ({ page }) => {

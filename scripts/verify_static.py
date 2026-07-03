@@ -46,6 +46,12 @@ app_js_files = [
     "jeonseProtection.commands.js",
     "jeonsePublicData.adapters.js",
     "jeonsePriceRisk.service.js",
+    "cclConsole.core.js",
+    "cclConsole.data.js",
+    "cclConsole.app.js",
+    "fdrConsole.core.js",
+    "fdrConsole.data.js",
+    "fdrConsole.app.js",
 ]
 
 required = [
@@ -120,6 +126,8 @@ html_needles = [
     "./jeonseProtection.commands.js",
     "./jeonsePublicData.adapters.js",
     "./jeonsePriceRisk.service.js",
+    "./cclConsole.core.js",
+    "./fdrConsole.app.js",
     "./app.js",
 ]
 for needle in html_needles:
@@ -284,6 +292,27 @@ for needle in [
 ]:
     if needle not in harness_verify:
         raise SystemExit(f"harnessVerification missing {needle!r}")
+
+# ---- 역할 콘솔 계약 (기업여신 ccl / FDS fdr) ----
+console_src = "".join((ROOT / f"app/{name}").read_text(encoding="utf-8") for name in [
+    "cclConsole.core.js", "cclConsole.data.js", "cclConsole.app.js",
+    "fdrConsole.core.js", "fdrConsole.data.js", "fdrConsole.app.js",
+])
+for needle in [
+    "기업여신 심사지원 포털", "여신 검토 보드", "BIZ-REF-", "실제 대출 승인/거절 확정 금지",
+    "금리/한도 산정 금지", "품의 초안", "corporate-credit",
+    "FDS·보이스피싱 대응 포털", "경보 대응 보드", "CUST-FD-", "경보 자동 종결 금지",
+    "closedByHuman", "fds-response", "role scope is required",
+]:
+    if needle not in console_src:
+        raise SystemExit(f"role console missing {needle!r}")
+app_src = (ROOT / "app/app.js").read_text(encoding="utf-8")
+for needle in ["#corporate-credit-dashboard", "#fds-dashboard"]:
+    if needle in app_src:
+        raise SystemExit(f"label-only dashboard hash 재유입: {needle!r}")
+for needle in ["corporate-credit-harness", "fds-response-harness", "/roles/corporate-credit/board", "/roles/fds-response/board"]:
+    if needle not in app_src:
+        raise SystemExit(f"app.js console wiring missing {needle!r}")
 
 # ---- 공공데이터 프록시 계약 (키는 환경변수로만) ----
 proxy_src = (ROOT / "scripts/api-proxy.mjs").read_text(encoding="utf-8")

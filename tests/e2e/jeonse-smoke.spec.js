@@ -9,6 +9,8 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => window.localStorage.removeItem("jb-finance-support-state-v4"));
   await page.addInitScript(() => window.localStorage.removeItem("jbwc-ops-db-v3"));
   await page.addInitScript(() => window.localStorage.removeItem("jpo-ops-db-v2"));
+  await page.addInitScript(() => window.localStorage.removeItem("ccl-ops-db-v1"));
+  await page.addInitScript(() => window.localStorage.removeItem("fdr-ops-db-v1"));
 });
 
 test("스모크: 진입→보드→검색→접수(고위험)→기록→승인 대기→새로고침 완주", async ({ page }) => {
@@ -87,7 +89,7 @@ test("자체 검증 루프 + 보안 훅 차단(PII 접수/자동 종결/사람 �
   await expect(page.locator("#page-content")).toContainText("하네스 자체 검증");
   const selfTest = await page.evaluate(() => runHarnessSelfTest());
   expect(selfTest.pass, JSON.stringify(selfTest.results.filter((r) => !r.ok), null, 2)).toBe(true);
-  expect(selfTest.results.length).toBe(12);
+  expect(selfTest.results.length).toBe(24); // 4개 하네스 × 6 검증
 
   // 네거티브 1: PII 포함 접수 차단
   await page.goto("/index.html#/roles/jeonse-protection/cases/new");

@@ -4,7 +4,15 @@ function jpoBoardCard(item) {
   const topSignals = jpoTable("jeonse_risk_signals", JPO_ROLE_KEY)
     .filter((signal) => signal.caseId === item.id)
     .slice(0, 3);
-  const contractLine = item.contractEndDate ? `계약/만기 ${item.contractEndDate}` : "계약일 미정";
+  const contractDays = (() => {
+    if (!item.contractEndDate) return null;
+    const target = new Date(item.contractEndDate);
+    if (Number.isNaN(target.getTime())) return null;
+    return Math.ceil((target.getTime() - Date.now()) / 86400000);
+  })();
+  const contractLine = contractDays == null
+    ? "계약일 미정"
+    : contractDays >= 0 ? `계약 예정 D-${contractDays}` : `만기 경과 D+${Math.abs(contractDays)}`;
   return `<article class="jpo-card jbwc-card" data-jpo-open-case="${escapeHtml(item.id)}" role="button" tabindex="0">
     <header><strong>${escapeHtml(item.caseNo)}</strong>${jpoRiskPill(item.riskLevel)}</header>
     <p class="jbwc-meta">${escapeHtml(item.customerRefId)} · ${escapeHtml(jpoHousingTypeLabel(item.housingType))}</p>

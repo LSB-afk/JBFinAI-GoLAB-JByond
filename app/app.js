@@ -1279,9 +1279,9 @@ function counts() {
     budget: agents.reduce((sum, agent) => sum + agent.spent, 0),
     settings: 3,
     "rm-dashboard": 8,
-    "corporate-credit-dashboard": 8,
+    "corporate-credit-harness": 8,
     "jeonse-protection-harness": 8,
-    "fds-dashboard": 8,
+    "fds-response-harness": 8,
     "jb-woori-capital-dashboard": 8,
   };
 }
@@ -1559,9 +1559,9 @@ function defaultDetailForView(view) {
     "budget",
     "settings",
     "rm-dashboard",
-    "corporate-credit-dashboard",
+    "corporate-credit-harness",
     "jeonse-protection-harness",
-    "fds-dashboard",
+    "fds-response-harness",
     "jb-woori-capital-dashboard",
   ];
   if (summaryViews.includes(view)) return "view";
@@ -1767,9 +1767,9 @@ function renderWorkbench() {
     settings: settingsPage,
     plugins: pluginsPage,
     "rm-dashboard": rmDashboardPage,
-    "corporate-credit-dashboard": corporateCreditDashboardPage,
+    "corporate-credit-harness": cclOpsPage,
     "jeonse-protection-harness": jeonseProtectionHarnessPage,
-    "fds-dashboard": fdsDashboardPage,
+    "fds-response-harness": fdrOpsPage,
     "jb-woori-capital-dashboard": jbWooriCapitalDashboardPage,
     "case-detail": () => caseDetailPage(currentCase()),
   };
@@ -1938,8 +1938,8 @@ function commandMarkup() {
 
 function latestWorkSummaryView() {
   const roles = [
-    ["기업여신", "AI 3개 · 업무 기능 5개", "서류·재무분석, 전결 라우팅, 자금용도 사후점검", "#corporate-credit-dashboard"],
-    ["FDS/보이스피싱", "AI 3개 · 업무 기능 6개", "이상징후, 지급정지·해제, 탐지룰 운영", "#fds-dashboard"],
+    ["기업여신", "실동작 콘솔 · 에이전트 8", "재무 요약·상환 체크·서류 확인·품의 초안 (승인은 사람)", "#/roles/corporate-credit/board"],
+    ["FDS/보이스피싱", "실동작 콘솔 · 에이전트 8", "신호 요약·고객 확인·차단/보류 권고 (종결은 사람)", "#/roles/fds-response/board"],
   ];
   return `
     <div class="latest-work">
@@ -3748,9 +3748,9 @@ function renderProperties() {
     budget: budgetContextMarkup,
     settings: settingsContextMarkup,
     "rm-dashboard": rmDashboardContextMarkup,
-    "corporate-credit-dashboard": corporateCreditDashboardContextMarkup,
+    "corporate-credit-harness": cclContextMarkup,
     "jeonse-protection-harness": jeonseProtectionHarnessContextMarkup,
-    "fds-dashboard": fdsDashboardContextMarkup,
+    "fds-response-harness": fdrContextMarkup,
     "jb-woori-capital-dashboard": jbWooriCapitalDashboardContextMarkup,
   };
 
@@ -3784,9 +3784,9 @@ function propertyPanelTitle() {
   if (activeDetailType === "skill" && currentSkill()) return skillLabel(currentSkill().slug);
   if (activeDetailType === "feature" && currentFeature()) return currentFeature().title;
   if (activeDetailType === "view" && activeView === "rm-dashboard") return "RM 역할 대시보드";
-  if (activeDetailType === "view" && activeView === "corporate-credit-dashboard") return "기업여신 담당자 대시보드";
+  if (activeDetailType === "view" && activeView === "corporate-credit-harness") return "기업여신 심사지원 포털";
   if (activeDetailType === "view" && activeView === "jeonse-protection-harness") return "전세사기 보호 담당자 하네스";
-  if (activeDetailType === "view" && activeView === "fds-dashboard") return "보이스피싱/FDS 담당자 대시보드";
+  if (activeDetailType === "view" && activeView === "fds-response-harness") return "FDS·보이스피싱 대응 포털";
   if (activeDetailType === "view") return "선택 화면 요약";
   const item = currentCase();
   return item ? `${item.code} · ${item.customerName}` : "속성";
@@ -5549,13 +5549,13 @@ function bindActions() {
         return;
       }
       if (selectedRailRole === "기업여신 담당자") {
-        activeView = "corporate-credit-dashboard";
+        activeView = "corporate-credit-harness";
         activeDetailType = defaultDetailForView(activeView);
-        if (window.location.hash !== "#corporate-credit-dashboard") {
-          window.location.hash = "corporate-credit-dashboard";
+        if (window.location.hash !== "#/roles/corporate-credit/board") {
+          window.location.hash = "/roles/corporate-credit/board";
         }
         render();
-        notify("기업여신 담당자 대시보드로 이동했습니다.");
+        notify("기업여신 심사지원 포털로 이동했습니다.");
         return;
       }
       if (selectedRailRole === "전세보호 담당자") {
@@ -5574,13 +5574,13 @@ function bindActions() {
         return;
       }
       if (selectedRailRole === "보이스피싱/FDS 담당자") {
-        activeView = "fds-dashboard";
+        activeView = "fds-response-harness";
         activeDetailType = defaultDetailForView(activeView);
-        if (window.location.hash !== "#fds-dashboard") {
-          window.location.hash = "fds-dashboard";
+        if (window.location.hash !== "#/roles/fds-response/board") {
+          window.location.hash = "/roles/fds-response/board";
         }
         render();
-        notify("보이스피싱/FDS 담당자 대시보드로 이동했습니다.");
+        notify("FDS·보이스피싱 대응 포털로 이동했습니다.");
         return;
       }
       notify(`${selectedRailRole} 유형을 선택했습니다.`);
@@ -5724,10 +5724,30 @@ function applyHashRoute() {
     }
     return;
   }
+  const cclRoute = typeof cclRouteFromHash === "function" ? cclRouteFromHash(window.location.hash) : null;
+  if (cclRoute) {
+    activeView = "corporate-credit-harness";
+    activeDetailType = defaultDetailForView(activeView);
+    if (typeof cclState !== "undefined") {
+      cclState.view = cclRoute.view || "board";
+      cclState.detail = cclRoute.caseId ? { id: cclRoute.caseId } : null;
+    }
+    return;
+  }
+  const fdrRoute = typeof fdrRouteFromHash === "function" ? fdrRouteFromHash(window.location.hash) : null;
+  if (fdrRoute) {
+    activeView = "fds-response-harness";
+    activeDetailType = defaultDetailForView(activeView);
+    if (typeof fdrState !== "undefined") {
+      fdrState.view = fdrRoute.view || "board";
+      fdrState.detail = fdrRoute.caseId ? { id: fdrRoute.caseId } : null;
+    }
+    return;
+  }
   const view = window.location.hash.replace("#", "");
   const known = navigation
     .flatMap((group) => group.items.map((item) => item.id))
-    .concat(["rm-dashboard", "corporate-credit-dashboard", "fds-dashboard", "jb-woori-capital-dashboard"]);
+    .concat(["rm-dashboard", "corporate-credit-harness", "fds-response-harness", "jb-woori-capital-dashboard"]);
   if (!known.includes(view)) return;
   activeView = view;
   activeDetailType = defaultDetailForView(view);

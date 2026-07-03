@@ -86,7 +86,7 @@ const JPO_VIEWS = {
   "doc-checklist": "제출서류 체크리스트",
   "legal-referral": "법률지원 연계",
   "finance-housing-referral": "금융·주거지원 연계",
-  "care-referral": "심리상담/센터 연계",
+  "care-referral": "센터 연계",
   "support-referral": "피해자 상담/지원 연계",
   "ai-analysis": "AI 위험 분석 요청",
   "ai-consult-summary": "AI 상담 요약",
@@ -126,16 +126,14 @@ const jpoNavigation = [
     { id: "doc-checklist", icon: "check-square", label: "제출서류 체크리스트", description: "보유·누락", countKey: "docChecklist" },
     { id: "legal-referral", icon: "network", label: "법률지원 연계", description: "기관 안내", countKey: "legalReferral" },
     { id: "finance-housing-referral", icon: "wallet", label: "금융·주거지원 연계", description: "기관 안내", countKey: "financeHousingReferral" },
-    { id: "care-referral", icon: "shield", label: "심리상담/센터 연계", description: "기관 안내", countKey: "careReferral" },
+    { id: "care-referral", icon: "shield", label: "센터 연계", description: "심리상담·기관 안내", countKey: "careReferral" },
   ]},
   { section: "AI·자동화 관리", items: [
     { id: "ai-analysis", icon: "activity", label: "AI 위험 분석 요청", description: "대기/실행", countKey: "aiAnalysis" },
     { id: "ai-consult-summary", icon: "bot", label: "AI 상담 요약", description: "승인 대기 포함", countKey: "aiConsultSummary" },
-    { id: "agent-harness", icon: "bot", label: "운영 에이전트 하네스", description: "10개 에이전트", countKey: "agentHarness" },
+    { id: "agent-harness", icon: "bot", label: "운영 에이전트 하네스", description: "표면 6·내부 10", countKey: "agentHarness" },
     { id: "data-connectors", icon: "database", label: "데이터 연결 상태", description: "Seoul·MOLIT·HUG", countKey: "dataConnectors" },
-    { id: "roles", icon: "network", label: "담당자/권한", description: "권한 검토", countKey: "roles" },
     { id: "audit-logs", icon: "history", label: "감사 기록", description: "검토 필요", countKey: "auditLogs" },
-    { id: "inspections", icon: "refresh-cw", label: "정기 점검", description: "스케줄", countKey: "inspections" },
   ]},
 ];
 
@@ -304,6 +302,9 @@ const JPO_OFFICIAL_REFERENCES = [
   { key: "law", label: "전세사기피해자 지원 및 주거안정에 관한 특별법", site: "law.go.kr", note: "요건·절차는 법령 원문 확인" },
   { key: "fsc", label: "금융위원회 전세사기 피해자 금융지원 프로그램", site: "fsc.go.kr", note: "금융지원 안내 후보" },
 ];
+
+/* 표면 에이전트 — 화면에 상시 노출되는 6개. 나머지는 내부 전문 조직(접힘)으로 표시 */
+const JPO_SURFACE_AGENT_IDS = ["jpo-intake", "jpo-price", "jpo-registry", "jpo-guarantee", "jpo-auction", "jpo-victim"];
 
 function jpoHashForView(view, caseId) {
   if (caseId) return `#${JPO_ROUTE_BASE}/cases/${encodeURIComponent(caseId)}`;
