@@ -31,7 +31,7 @@ aliases: [MVP제안서, MVP Proposal]
 | 고객(구매자) | JB금융그룹(1차 전북은행, 확장 JB우리캐피탈) | business-model §고객↔사용자 분리 [E2] |
 | 사용자(실무) | RM·여신심사·사후관리·준법·AML 5개 직군 | core-bet §User [E2] |
 | 수혜자(최종고객) | 소상공인 차주(히어로 = 전주 중앙로 카페), 전세 임차인, 피싱 잠재 피해자 | business-model [E1] |
-| 히어로 케이스 | **CCL-0001**(전주 카페 개인사업자 운전자금 검토, corporate-credit 콘솔, `cclConsole.data.js` seed) | 09_flow §0 [E4] |
+| 히어로 케이스 | **CCL-0001**(전주 카페 개인사업자 운전자금 검토, 기업여신(CCR) 콘솔, `corporateCredit.*` seed — 구 `cclConsole.*`, 2026-07-05 교체) | 09_flow §0 [E4] |
 | 운영 계약 | `Case → AgentRun → Agent → Skill → Evidence → Approval → Audit` | canon §8 [E4] |
 
 > **정직성 규율**: "3케이스 실동작"·"서버 승격"·"로컬모델 연결"은 완성이 아니라 개발 목표이며 발표·문서에서 `[목표/조건부]`로만 말한다. 최소 히어로(CCL-0001) 1개는 실 LLM 동작 지향(키스톤-확정 §정직한 전제).
@@ -61,7 +61,7 @@ aliases: [MVP제안서, MVP Proposal]
 
 **운영 메커니즘**: `Case → AgentRun → Agent → Skill → Evidence → Approval → Audit`(canon §8). 콘솔 축 = 계열사 × 담당 직군이며, 도메인(여신·전세보호·피싱·사후관리)은 그 직군이 처리하는 케이스다(키스톤-확정).
 
-- 14+ 전문 에이전트가 신호 수집 → 위험 분류 → 행동 초안 → 검증을 수행하되, **고객 대상 행동은 승인 레벨 L0~L4 통과 전까지 자동 실행되지 않는다**(RM·준법 2역할 승인자, canon §2·§8, [E4]). 히어로 콘솔 실측 = corporate-credit **8 에이전트**(표면 5: intake·financial·repayment·doc·memo / +policy·reply·supervisor), 케이스당 활성 3~5(승보-프로토타입-반영 §7.5).
+- 14+ 전문 에이전트가 신호 수집 → 위험 분류 → 행동 초안 → 검증을 수행하되, **고객 대상 행동은 승인 레벨 L0~L4 통과 전까지 자동 실행되지 않는다**(RM·준법 2역할 승인자, canon §2·§8, [E4]). 히어로 콘솔 실측 = 기업여신(CCR) **15 에이전트**(코드 `corporateCredit.*` — `ccr-triage`·`ccr-financial-quality`·`ccr-collateral`·`ccr-memo`·`ccr-compliance` 등), 케이스당 활성 3~5(정정 2026-07-05 #2, 구 `cclConsole.*` 8 에이전트는 죽은 코드로 대체됨 — 구현현황-JB_project2 §12).
 - **PII 4중 방어**로 원본 고객 PII를 외부 프런티어 LLM에 반출하지 않는다. 하이브리드 라우팅: **웹 = 정책/승인 UI + Claude/Codex API(비민감)**, **로컬(EXAONE 3.5 7.8B 데모, Qwen2.5 실배포 권고) = PII 포함 업무**(결정-현황-종합, [E2]). **제출 코드 정본 JB_project2**(`app/harnessVerification.js`, 이승보 프로토타입)에 콘솔별 `verifyNoPIILeakage` 등 24체크가 실재한다(E4). *(예선 `02_제품/app`엔 미이식 — 심사 시 제출 repo=JB_project2 기준.)*
 - **계열사별 모듈화**: 전북은행 = 여신(corporate-credit)·전세보호·피싱, JB우리캐피탈 = 여신·사후관리(EWS). 공통 뼈대(운영계약 + PII 4중방어)는 한 번만 만들고 직군별 에이전트셋·화면·데이터만 스왑한다(키스톤-확정 "하이브리드", [E4]).
 
@@ -101,7 +101,7 @@ aliases: [MVP제안서, MVP Proposal]
 | G3 공개·공공 | law.go.kr·MOLIT·ECOS | 가능(식별요소 재확인 후) |
 | G4 내부 생성물(Zero-PII 파생) | 위험코드·근거 포인터·승인상태·모델 버전 | **가능** |
 
-4중 방어 = ① 데이터 등급제(G0~G4 게이팅) · ② 토큰화(키 분리보관 HSM) · ③ 모델 라우팅(원본=로컬, 비식별=외부) · ④ 반출 스캔(출력 DLP) + ⑤ 감사원장(3년 보존). 신용정보법 §40조의2 ①②⑥⑦⑧이 1차 근거, 개인정보보호법 §28조의4·5가 보충(data-strategy §4중 방어, [E5/E4]).
+4중 방어 = ① 데이터 등급제(G0~G4 게이팅) · ② 토큰화(키 분리보관 HSM) · ③ 모델 라우팅(원본=로컬, 비식별=외부) · ④ 반출 스캔(출력 DLP) + ⑤ 감사원장(보존기간: 파일럿 계약 시 관련 법령·내규에 따라 확정 — CMP-23). 신용정보법 §40조의2 ①②⑥⑦⑧이 1차 근거, 개인정보보호법 §28조의4·5가 보충(data-strategy §4중 방어, [E5/E4]).
 
 **데이터 조달 3층**: ① 무상 공개형 API(ECOS·RTMS·상권정보·국세청·law.go.kr — 즉시 편입) · ② 유료 건별(등기 700원/1,000원, CRETOP — 정규화 피처만 잔존) · ③ 기관계약형(오픈뱅킹·NICE/KCB·카드매출 — MVP는 Fallback)(data-strategy §조달 3층, [E2]).
 

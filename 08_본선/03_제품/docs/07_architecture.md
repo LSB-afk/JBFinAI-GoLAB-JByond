@@ -77,7 +77,7 @@ graph LR
 
 **Policy Engine**: 위 규칙 게이트들을 하나로 묶는 이름 — "LLM은 판단을 돕고, Policy Engine은 금지선·승인선을 강제한다." **가드레일 5종은 `harnessCore.js`에 실동작(E4)**, 5영역·12규칙 통합 결정표(allow/block/require_approval/escalate)는 **[설계]** 통합안 — [[08_본선/03_제품/01_결정-준비/casesops-분기/07-policy-engine|07-Policy-Engine 설계도]] 참조.
 
-**메모리(Memory)**: 에이전트 판단·승인 이력을 세션 로그 전량이 아니라 Customer/Agent/Staff 3계층 카드로 증류해 축적하는 설계는 [[08_본선/03_제품/01_결정-준비/casesops-분기/11-메모리-3계층-자동진화-설계도|11-메모리-3계층 설계도]] 참조([분기/미확정] — PR `LSB-afk/JB_project2#2`의 `memoryCards.js`가 CCL 콘솔 한정 첫 구현으로 제출·수용기준 4/4 검증 완료, **머지 대기(OPEN)**).
+**메모리(Memory)**: 에이전트 판단·승인 이력을 세션 로그 전량이 아니라 Customer/Agent/Staff 3계층 카드로 증류해 축적하는 설계는 [[08_본선/03_제품/01_결정-준비/casesops-분기/11-메모리-3계층-자동진화-설계도|11-메모리-3계층 설계도]] 참조([분기/미확정] — PR `LSB-afk/JB_project2#2`의 `memoryCards.js`가 CCL 콘솔 한정 첫 구현으로 제출·수용기준 4/4 검증 완료 — 이후 **PR#4로 대체**(RMO 콘솔 이식 완료, 라이브 케이스 온톨로지 동반, 커밋 `b68b3b0`), **머지 대기(OPEN)**).
 
 **온톨로지 그래프**: 케이스·에이전트·근거·승인의 실데이터 관계를 그래프로 렌더하는 운영계약 시각화(17노드/16엣지 실측, cytoscape 로컬 벤더링) — `modules.js initCaseOntology()` [E4, feature-spec 기능군7 F-7.1.5].
 
@@ -185,6 +185,8 @@ graph TB
 **API 승격 매핑** [E3, 04_tech §5]: `computeRiskDecision`→`POST /api/cases/:id/risk-decision`(api-spec 갭), `buildDashboardData`→`GET /api/dashboard`, `auditChainRecords`→`GET /api/audit`, `moveCaseToColumn`→`PATCH /api/cases/:id`(AgentRun 트리거 훅 동반).
 
 **데모 LLM 게이트웨이 [E4, 2026-07-04 구현]**: 데모 런타임은 Ollama가 아니라 **claude/codex CLI 라우팅(paperclip式)** — `02_제품/scripts/api-proxy.mjs`의 `POST /llm`. 폴백 사다리(요청 엔진→반대 엔진 재시도→사람 큐 `escalated`) 내장, 모든 시도를 `llm-runs.jsonl`에 구조화 기록, 스폰 cwd 중립화로 내부 문서 컨텍스트 유입 차단. 실측 케이스당 ~$0.12(1회, [[Q13-토큰비용-유닛이코노믹스]]). 위 4층 라우팅 표는 실배포 목표이고, 게이트웨이의 tier 라벨(local/frontier)이 그 축소 재현이다.
+>
+> **배선 상태(정직 표기)**: `llm-gateway`(:8022)는 **스크립트로 존재**하며, 앱 UI 배선(에이전트 실행뷰가 이 게이트웨이를 실제 호출)은 **PR#4 후속 커밋에서 폴백 경로로 연결**된다(2026-07-05, 머지 대기). 현재 JB_project2 앱 본체의 주 판단·초안 루프는 여전히 mock이며(기능명세서 Part2 미검증 주의 참조), 게이트웨이는 데모 프록시 기동 시 별도 경로로 실동작한다.
 
 **JB_project2 로컬 Ollama 실연동 [E4, 8c274b5]**: 위 게이트웨이와 별개로 `_vendor/JB_project2`에는 `scripts/ollama-agent-proxy.mjs`(:8030, 금지패턴 4종 내장)와 `app/agentModelSettings.js`(mock↔ollama 런타임 토글 UI, localStorage 저장)가 신설됐다. 우리 쪽 `02_제품/scripts/api-proxy.mjs`(:8022, PR `LSB-afk/JB_project2#2`)와는 포트·소유 경로가 다른 별도 구현이며 현재 통합되어 있지 않다 — 관계 정리는 [[08_본선/03_제품/reports/구현현황-JB_project2|구현현황-JB_project2]] 참조.
 
@@ -222,7 +224,7 @@ graph TB
 
 모든 상태변경은 `ccl_audit_logs`로 귀결 [E4]. 필드: `actorId·action·targetType·targetId·riskLevel·reviewRequired·createdAt`.
 
-**최소 감사 필드**(외부 LLM 경유 시) [E2, D5a/D10/B1]: 사용자·서비스 ID · 토큰화된 요청 요약 · 정책 결정 이유 · 모델/버전 · 툴 호출 · 승인 여부 · DLP 스캔 결과 · **이전 로그 해시 또는 서명**(tamper-evident) · 가명처리 규칙 · 처리 목적·일시. **3년 이상 보존**(신용정보법 통제) [E2, D5a].
+**최소 감사 필드**(외부 LLM 경유 시) [E2, D5a/D10/B1]: 사용자·서비스 ID · 토큰화된 요청 요약 · 정책 결정 이유 · 모델/버전 · 툴 호출 · 승인 여부 · DLP 스캔 결과 · **이전 로그 해시 또는 서명**(tamper-evident) · 가명처리 규칙 · 처리 목적·일시. **보존기간은 관련 법령·내규에 따라 확정**(신용정보법 통제, 확정값 명시 금지 — [[08_본선/03_제품/rules/compliance-rules|compliance-rules]] CMP-23) [E2, D5a].
 
 - 행위자(사람 `USR-*`·에이전트 `ccl-*`)를 `actorId`로 직접 식별 [E4].
 - `reviewRequired=true` 레코드만 감독 "감사 기록" 뷰 카운트에 집계 [E4].
