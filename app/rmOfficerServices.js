@@ -412,8 +412,14 @@ function rmoSafeModelCaseSummary(caseRow) {
 function rmoModelOutputSummary(modelResult) {
   const parsed = modelResult && modelResult.parsed ? modelResult.parsed : {};
   const summary = parsed.summary || modelResult.output || "로컬 모델 응답이 비어 있습니다.";
-  const nextActions = Array.isArray(parsed.nextActions) ? parsed.nextActions.slice(0, 2).join(" / ") : "";
-  const riskNotes = Array.isArray(parsed.riskNotes) ? parsed.riskNotes.slice(0, 2).join(" / ") : "";
+  const itemText = (item) => {
+    if (item == null) return "";
+    if (typeof item === "string") return item;
+    if (typeof item === "number" || typeof item === "boolean") return String(item);
+    return item.action || item.title || item.label || item.note || item.summary || item.description || JSON.stringify(item);
+  };
+  const nextActions = Array.isArray(parsed.nextActions) ? parsed.nextActions.slice(0, 2).map(itemText).filter(Boolean).join(" / ") : "";
+  const riskNotes = Array.isArray(parsed.riskNotes) ? parsed.riskNotes.slice(0, 2).map(itemText).filter(Boolean).join(" / ") : "";
   return [
     `Ollama ${modelResult.model}`,
     "내부 업무 참고용",
@@ -448,7 +454,7 @@ async function runRmOfficerOllamaSampleRequest(key) {
       guardrails: RMO_FORBIDDEN_OUTPUTS,
       outputPolicy: "내부 업무 참고용. 실제 승인/거절, 금리/한도, 신용평가, 정책자금 대상 확정 금지. 담당자 검토 필요.",
     },
-  });
+  }, { forceOllama: true });
   const outputSummary = rmoModelOutputSummary(modelResult);
   const run = recordRmOfficerAgentRun({
     agentId,

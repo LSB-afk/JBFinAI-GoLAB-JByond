@@ -3,7 +3,7 @@
 
 const AGENT_MODEL_SETTINGS_KEY = "jb-agent-model-settings-v1";
 const AGENT_MODEL_DEFAULTS = {
-  runtime: "mock",
+  runtime: "ollama",
   proxyBase: "http://127.0.0.1:8030",
   model: "llama3.1:8b",
   temperature: 0.2,
@@ -15,6 +15,32 @@ const agentModelUiState = {
   health: { status: "idle", message: "연결 확인 전", models: [] },
   saving: false,
 };
+
+function agentModelFormatSize(bytes) {
+  const size = Number(bytes || 0);
+  if (!size) return "";
+  return size > 1024 * 1024 * 1024 ? `${(size / 1024 / 1024 / 1024).toFixed(1)}GB` : `${Math.round(size / 1024 / 1024)}MB`;
+}
+
+function agentModelKnownOptions(settings, health) {
+  const names = new Set([settings.model].filter(Boolean));
+  (health.models || []).forEach((model) => { if (model && model.name) names.add(model.name); });
+  return Array.from(names).map((name) => {
+    const found = (health.models || []).find((model) => model.name === name) || {};
+    return { name, size: found.size, id: found.id };
+  });
+}
+
+function agentModelOptionMarkup(settings, health) {
+  const options = agentModelKnownOptions(settings, health);
+  if (!options.length) {
+    return `<option value="${escapeHtml(settings.model)}">${escapeHtml(settings.model)}</option>`;
+  }
+  return options.map((model) => {
+    const label = [model.name, agentModelFormatSize(model.size)].filter(Boolean).join(" · ");
+    return `<option value="${escapeHtml(model.name)}" ${model.name === settings.model ? "selected" : ""}>${escapeHtml(label)}</option>`;
+  }).join("");
+}
 
 function loadAgentModelSettings() {
   try {
@@ -83,7 +109,13 @@ function agentModelSettingsPanelMarkup() {
           <input name="proxyBase" type="url" value="${escapeHtml(settings.proxyBase)}" placeholder="http://127.0.0.1:8030" />
         </label>
         <label>
-          모델명
+          감지된 모델
+          <select name="modelSelect" data-agent-model-select>
+            ${agentModelOptionMarkup(settings, health)}
+          </select>
+        </label>
+        <label>
+          모델명 직접 입력
           <input name="model" type="text" value="${escapeHtml(settings.model)}" placeholder="llama3.1:8b" />
         </label>
         <label>
@@ -102,7 +134,7 @@ function agentModelSettingsPanelMarkup() {
       <div class="jbwc-lastrun">
         <p><strong>상태</strong> <span class="status-pill ${healthClass}">${escapeHtml(health.status)}</span></p>
         <p>${escapeHtml(health.message || "연결 확인 전")}</p>
-        ${health.models && health.models.length ? `<p class="jbwc-meta">감지 모델: ${health.models.map((m) => escapeHtml(m.name)).join(" · ")}</p>` : ""}
+        ${health.models && health.models.length ? `<p class="jbwc-meta">감지 모델: ${health.models.map((m) => `${escapeHtml(m.name)}${m.size ? ` (${escapeHtml(agentModelFormatSize(m.size))})` : ""}`).join(" · ")}</p>` : ""}
       </div>
       <p class="jbwc-guard">Ollama 응답은 내부 운영 참고용으로만 저장되며 실제 승인·거절·금리·한도·신용평가 판단에 사용하지 않습니다.</p>
     </article>
@@ -112,29 +144,35 @@ function agentModelSettingsPanelMarkup() {
 async function checkAgentModelHealth() {
   const settings = loadAgentModelSettings();
   agentModelUiState.health = { status: "loading", message: "Ollama 프록시 연결 확인 중", models: [] };
-  const url = `${settings.proxyBase}/agent/health?model=${encodeURIComponent(settings.model)}`;
+  const url = `${settings.proxyBase}/agent/models?model=${encodeURIComponent(settings.model)}`;
   const response = await fetch(url);
   const data = await response.json();
   if (!response.ok || !data.connected) {
     throw new Error(data.error || `HTTP ${response.status}`);
   }
+  const availableModel = (data.models || []).find((model) => model.name === data.selectedModel);
+  const fallbackModel = availableModel ? data.selectedModel : ((data.models || [])[0] || {}).name || data.selectedModel;
+  if (fallbackModel && fallbackModel !== settings.model) {
+    saveAgentModelSettings({ model: fallbackModel, runtime: "ollama" });
+  }
   agentModelUiState.health = {
-    status: data.modelAvailable ? "ok" : "error",
+    status: fallbackModel ? "ok" : "error",
     message: data.modelAvailable
       ? `${data.selectedModel} 모델 사용 가능`
-      : `${data.selectedModel} 모델이 Ollama에 없습니다. ollama pull 또는 모델명 변경이 필요합니다.`,
+      : `${data.selectedModel} 모델이 Ollama에 없어 ${fallbackModel || "사용 가능 모델 없음"}로 전환했습니다.`,
     models: data.models || [],
   };
   return data;
 }
 
-async function runAgentModelRequest(payload) {
+async function runAgentModelRequest(payload, options = {}) {
   const settings = loadAgentModelSettings();
-  if (settings.runtime !== "ollama") {
+  if (settings.runtime !== "ollama" && !options.forceOllama) {
     throw new Error("Ollama 런타임이 비활성화되어 있습니다.");
   }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), settings.timeoutMs);
+  const model = String(options.model || payload.model || settings.model || AGENT_MODEL_DEFAULTS.model).trim();
   try {
     const response = await fetch(`${settings.proxyBase}/agent/run`, {
       method: "POST",
@@ -142,7 +180,7 @@ async function runAgentModelRequest(payload) {
       signal: controller.signal,
       body: JSON.stringify({
         ...payload,
-        model: settings.model,
+        model,
         temperature: settings.temperature,
       }),
     });
@@ -159,13 +197,23 @@ async function runAgentModelRequest(payload) {
 function bindAgentModelSettingsActions() {
   const form = document.getElementById("agent-model-settings-form");
   if (form) {
+    const modelSelect = form.querySelector("[data-agent-model-select]");
+    const modelInput = form.querySelector('input[name="model"]');
+    if (modelSelect && modelInput) {
+      modelSelect.addEventListener("change", () => {
+        modelInput.value = modelSelect.value;
+        saveAgentModelSettings({ runtime: "ollama", model: modelSelect.value });
+        if (typeof notify === "function") notify(`${modelSelect.value} 모델을 RM 하네스 실행 모델로 선택했습니다.`);
+        render();
+      });
+    }
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       const data = new FormData(form);
       saveAgentModelSettings({
         runtime: data.get("runtime"),
         proxyBase: data.get("proxyBase"),
-        model: data.get("model"),
+        model: data.get("modelSelect") || data.get("model"),
         temperature: data.get("temperature"),
         timeoutMs: data.get("timeoutMs"),
       });

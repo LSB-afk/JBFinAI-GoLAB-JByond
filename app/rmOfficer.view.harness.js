@@ -57,6 +57,7 @@ function rmoHarnessView() {
   const handoffs = rmoTable("rm_officer_agent_handoffs", RMO_ROLE_KEY).slice(0, 8);
   const modelSettings = typeof agentModelSettingsSummary === "function" ? agentModelSettingsSummary() : null;
   const modelStatus = modelSettings ? `${modelSettings.label} · ${modelSettings.model}` : "모의 실행";
+  const detectedModels = modelSettings && modelSettings.health && modelSettings.health.models ? modelSettings.health.models : [];
   const running = rmoState.modelRun && rmoState.modelRun.status === "running";
   const sampleCards = rmOfficerSampleRequests.map((s) => `<article class="jbwc-card">
     <header><strong>${escapeHtml(s.text)}</strong><span class="source-badge">${escapeHtml(s.key)}</span></header>
@@ -68,7 +69,8 @@ function rmoHarnessView() {
   return rmoPanel(`${rmOfficerHarness.name} — loop routing`,
     `<p class="jbwc-routing">요청 → <strong>RM Case Triage Orchestrator</strong> → 상담 도메인 agent(스킬/데이터) → Action/Comms → Compliance Guardrail Evaluator → Human Review → Audit/State.</p>
     <p class="jbwc-guard">정책: ${rmOfficerHarness.policy.map((item) => escapeHtml(item)).join(" · ")}</p>
-    <p class="jbwc-meta">현재 모델 설정: ${escapeHtml(modelStatus)} · 설정 화면에서 변경</p>`)
+    <p class="jbwc-meta">현재 모델 설정: ${escapeHtml(modelStatus)} · 설정 화면에서 변경</p>
+    ${detectedModels.length ? `<p class="jbwc-meta">Ollama 감지 모델: ${detectedModels.map((model) => escapeHtml(model.name)).join(" · ")}</p>` : ""}`)
     + rmoPanel("샘플 요청 실행", `
       <div class="jbwc-grid">${sampleCards}</div>
       ${rmoState.modelRun && rmoState.modelRun.message ? `<div class="jbwc-lastrun"><p><strong>로컬 모델 상태</strong> ${escapeHtml(rmoState.modelRun.status)}</p><p>${escapeHtml(rmoState.modelRun.message)}</p></div>` : ""}

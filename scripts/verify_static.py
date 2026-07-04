@@ -646,6 +646,9 @@ for needle in [
     "agentModelSettingsPanelMarkup",
     "checkAgentModelHealth",
     "runAgentModelRequest",
+    "/agent/models",
+    "data-agent-model-select",
+    "forceOllama",
     "http://127.0.0.1:8030",
     "Ollama 로컬 모델",
 ]:
