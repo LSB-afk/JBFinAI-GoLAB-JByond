@@ -46,24 +46,24 @@ aliases: [JB_project2 구현현황, implementation-inventory]
 
 ## 2. 페이지/뷰/라우트 (콘솔별 전체 목록)
 
-### 2-1. 기업여신 담당자(CCL) — 13개 뷰 (`cclConsole.core.js:29-44`)
+### 2-1. 기업여신 담당자(CCL) — 14개 뷰 (`cclConsole.core.js` `CCL_VIEWS`)
 `board · cases · cases-new · doc-check · approval-drafts · financial-summary · repayment-check · policy-match · early-warning · consult-log · reply-drafts · ai-analysis · agent-harness · audit-logs`
 칸반 컬럼(`CCL_BOARD_COLUMNS`, 6개): 신규 접수 → 자료 수집 → AI 검토 → 담당자 검토 필요 → 품의 진행 → 완료·보류.
 
 ### 2-2. FDS/보이스피싱 담당자(FDR) — 15개 뷰 (`fdrConsole.core.js:41-57`)
 `board · cases · cases-new · block-review · escalations · anomaly-signals · elder-guard · pattern-summary · rule-status · contact-scripts · payment-hold-guide · follow-up · ai-analysis · agent-harness · audit-logs`
 
-### 2-3. 전세보호 담당자(JPO) — 25개 뷰 (`jeonseProtection.config.js:88-117`, 콘솔 중 최다)
+### 2-3. 전세보호 담당자(JPO) — 29개 뷰 (`jeonseProtection.config.js` `JPO_VIEWS`, 콘솔 중 최다)
 `board · cases · cases-new · price-enrich · registry-check · guarantee-check · victim-application · urgent-auction · price-risk · rent-comparables · sale-comparables · official-price · building-check · landlord-risk · intake-consult · victim-guide · doc-checklist · legal-referral · finance-housing-referral · care-referral · support-referral · ai-analysis · ai-consult-summary · agent-harness · data-connectors · roles · audit-logs · inspections · case-full`
 (라이브 데모 전용 `?live=1` 경로가 `jeonsePublicData.adapters.js`를 통해 실제 `fetch()`를 수행하는 유일한 뷰 — 나머지는 전부 로컬 seed.)
 
-### 2-4. JB우리캐피탈(JBWC) — 22개 뷰 (`jbWooriCapitalSidebar.config.js:132-157`)
+### 2-4. JB우리캐피탈(JBWC) — 24개 뷰 (`jbWooriCapitalSidebar.config.js` `JBWC_VIEWS`)
 `board · approvals · audit-logs · privacy-permissions · integrations · cases · cases-new · ai-analysis · ai-assist · capabilities · roles · inspections · consumer-protection · alerts · personal-finance · auto-finance · mortgage-secured · enterprise-finance · customer-management · documents · vehicle-lifecycle · fds · complaints · agent-harness`
 
 ### 2-5. 원본 업무 보드(base app) — 15개 nav 아이템 + `rm-dashboard`
 `app.js` 최상단 `navigation` 배열(15개, dashboard/approvals 등)과 별도 단일 페이지 `rm-dashboard`. 이 계층은 콘솔이 아니라 예선 단계부터 이어진 flat 페이지 목록이다.
 
-**총 라우트 실측치: CCL 13 + FDR 15 + JPO 25(+case-full 상세 포함) + JBWC 22 + base 15 + rm-dashboard 1 = 91개 뷰 키.** (기획 문서에서 언급될 "콘솔 수"는 4가 아니라 base+RM까지 포함하면 6개 진입점으로 계산해야 함.)
+**총 라우트 실측치(소스 `*_VIEWS` 객체 전수): CCL 14 + FDR 15 + JPO 29 + JBWC 24 + base 15 + rm-dashboard 1 = 98개 뷰 키.** (기획 문서에서 언급될 "콘솔 수"는 4가 아니라 base+RM까지 포함하면 6개 진입점으로 계산해야 함.) *초판은 config 라인범위 기준 91로 집계했으나, 소스 `*_VIEWS` 오브젝트 전수 카운트 결과 98이 정확 — 2026-07-04 정정.*
 
 ---
 
